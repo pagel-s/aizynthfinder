@@ -47,6 +47,7 @@ class MctsSearchTree:
         self.config = config
         self.mode = self._check_mode()
         self._logger.debug(f"MCTS mode: {self.mode}")
+        self.single_precursor_rescue_available = False
 
         if root_smiles:
             self.root: Optional[MctsNode] = _MODE2NODECLASS[self.mode].create_root(
