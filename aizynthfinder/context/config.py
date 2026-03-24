@@ -33,7 +33,7 @@ class _SearchConfiguration:
     algorithm: str = "mcts"
     algorithm_config: Dict[str, Any] = field(
         default_factory=lambda: {
-            "C": 0.5,
+            "C": 0.4,
             "default_prior": 0.5,
             "use_prior": True,
             "prune_cycles_in_search": True,
