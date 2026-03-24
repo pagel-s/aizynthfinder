@@ -38,7 +38,7 @@ To set up a new experiment, work with the user to:
 
 Every experiment in a run must use the same benchmark and the same run budget.
 
-The current fixed benchmark is defined by `data/benchmark.yml` and includes:
+The current broad regression benchmark is defined by `data/benchmark.yml` and includes:
 
 - 15 fixed PaRoutes-derived targets in `data/benchmark.smi`
 - `time_limit: 30`
@@ -47,10 +47,16 @@ The current fixed benchmark is defined by `data/benchmark.yml` and includes:
 - `random_seed: 1337`
 - `benchmark.max_wall_time: 600`
 
-There is also a secondary hard benchmark in `data/benchmark_hard.yml` with 10
-persistent hard or slow targets. Use it to characterize progress once the main
-benchmark starts to saturate, or to check whether a change helps on the
-persistent hard cases instead of only making easy targets faster.
+The current hard optimization benchmark is defined by `data/benchmark_hard.yml`
+and includes 10 persistent hard or slow targets.
+
+For the current autoresearch phase:
+
+- `hard10` is the primary optimization target
+- `main15` is the regression gate
+
+The agent should optimize for `hard10` first and use `main15` to ensure that a
+change that helps hard cases does not obviously damage broader performance.
 
 These files are evaluation infrastructure and must stay fixed during a research
 run:
@@ -98,44 +104,55 @@ quality, search efficiency, or research velocity under the same benchmark.
 
 ## Benchmark Command
 
-Run the fixed benchmark like this:
-
-```bash
-python -m aizynthfinder.tools.autoresearch --spec data/benchmark.yml --output benchmark_summary.json --details-output benchmark_details.json > run.log 2>&1
-```
-
-Do not use a different spec during the run.
-
-The hard benchmark uses:
+Run the hard benchmark first for new ideas:
 
 ```bash
 python -m aizynthfinder.tools.autoresearch --spec data/benchmark_hard.yml --output benchmark_hard_summary.json --details-output benchmark_hard_details.json > run_hard.log 2>&1
 ```
 
-Use the hard benchmark as a secondary characterization benchmark, not as a
-replacement for the primary one unless the human explicitly changes the policy.
+This is the default experiment benchmark for the current phase.
+
+Only if the hard benchmark result improves `hard10` by the objective order, run
+the broad regression benchmark:
+
+```bash
+python -m aizynthfinder.tools.autoresearch --spec data/benchmark.yml --output benchmark_summary.json --details-output benchmark_details.json > run.log 2>&1
+```
+
+Do not invert this order unless the human explicitly changes the policy.
 
 ## Objective
 
-The benchmark is judged in this exact order:
+`hard10` is judged in this exact order:
 
 1. higher `solved_fraction`
 2. lower `median_first_solution_time`
 3. lower `median_first_solution_iteration`
 4. lower `mean_search_time`
 
-Use the values from `benchmark_summary.json`.
+Use the values from `benchmark_hard_summary.json` for the primary keep/discard
+decision.
+
+Then use `main15` as a regression gate with the same objective order.
+
+Acceptance rule for the current phase:
+
+- a change is a keep candidate only if it improves `hard10`
+- a keep candidate must then not materially regress `main15`
+- do not accept a drop in `main15` solved fraction
+- if `main15` solved fraction is unchanged, small regressions in lower-priority
+  `main15` speed metrics are acceptable only when the `hard10` gain is clear
 
 If two runs are effectively tied on these metrics, prefer the simpler change.
 
 Do not confuse activity with progress. Repeated tiny hyperparameter changes
 along the same line of attack are a failure mode, not a research strategy.
 
-Once the main benchmark is already solving most targets, treat progress on the
-persistent-unsolved and slow-solved targets as the most valuable kind of
-progress. Do not spend the default research budget shaving tiny amounts of time
-from already easy sub-second cases unless the same mechanism is likely to help
-the hard cases too.
+Once the broad regression benchmark is already solving most targets, treat
+progress on the persistent-unsolved and slow-solved targets as the most
+valuable kind of progress. Do not spend the default research budget shaving
+tiny amounts of time from already easy sub-second cases unless the same
+mechanism is likely to help the hard cases too.
 
 ## What You Can Change
 
@@ -180,11 +197,16 @@ evaluation easier to win.
 
 The benchmark writes:
 
+- `benchmark_hard_summary.json` — hard-benchmark metrics and exact fixed hard spec
+- `benchmark_hard_details.json` — per-target hard-benchmark results
+- `run_hard.log` — full hard-benchmark command output
 - `benchmark_summary.json` — benchmark-level metrics and the exact fixed spec
 - `benchmark_details.json` — per-target results
 - `run.log` — full command output
 
-The source of truth for keep/discard decisions is `benchmark_summary.json`.
+The source of truth for optimization decisions in the current phase is
+`benchmark_hard_summary.json`. Use `benchmark_summary.json` as the broad
+regression check before accepting a change.
 
 For publication tracking, also maintain `research/accepted_changes.tsv` for
 every kept algorithmic change.
@@ -207,6 +229,12 @@ Use:
 - `crash` if it fails to run or does not produce a valid summary
 
 Use `benchmark` values such as `main15` and `hard10`.
+Use `status` for the final overall decision on the commit, not a per-benchmark
+partial verdict.
+
+For a commit that runs both benchmarks, always write the `hard10` row first and
+the `main15` row second. Do not log a `main15` row without a corresponding
+`hard10` row for the same commit in this research phase.
 
 Do not commit `results.tsv`.
 
@@ -222,13 +250,15 @@ Then loop forever:
 1. Check the current branch and current best commit.
 2. Make one bounded algorithmic change in the editable surface.
 3. Commit the change.
-4. Run the fixed benchmark command and redirect output to `run.log`.
-5. If `benchmark_summary.json` is missing or invalid, inspect `tail -n 50 run.log`.
+4. Run the `hard10` benchmark command and redirect output to `run_hard.log`.
+5. If `benchmark_hard_summary.json` is missing or invalid, inspect `tail -n 50 run_hard.log`.
 6. If the failure is trivial and directly caused by the last edit, fix it and re-run once.
-7. Record one row per benchmark run in `results.tsv`.
-8. Compare against the current best using the objective order above.
-9. If the new run is better, keep the commit and continue from there.
-10. If it is worse or tied without a compelling simplification win, revert to the previous best commit.
+7. Record the `hard10` row in `results.tsv` immediately.
+8. Compare the `hard10` result against the current best using the objective order above.
+9. If the `hard10` result is clearly worse, discard and revert without running `main15`.
+10. If the `hard10` result improves by the objective order, run `main15` and record that row after the `hard10` row.
+11. Keep the change only if it improves `hard10` and passes the `main15` regression gate.
+12. If it fails the regression gate, discard and revert to the previous best commit.
 
 If a change is kept, append one row to `research/accepted_changes.tsv` with:
 
@@ -244,7 +274,7 @@ This tracked log is part of the research artifact and should stay publication-fr
 
 ## Plateau Strategy
 
-If the main benchmark is plateaued and the hard benchmark still has persistent
+If the hard benchmark is plateaued but still has persistent
 unsolved targets, optimize for one of these outcomes:
 
 - solve one previously persistent-unsolved hard target

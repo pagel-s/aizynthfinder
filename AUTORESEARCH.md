@@ -56,16 +56,15 @@ The most relevant files are:
 Start with a baseline run before changing code.
 
 The repo now has a benchmark harness that reads a fixed YAML spec. An example spec is
-available in `contrib/autoresearch.example.yml`, and the current default benchmark is
-defined by `data/benchmark.yml` with targets in `data/benchmark.smi`.
-That default benchmark currently uses 15 fixed PaRoutes-derived targets, a
-per-target budget of `time_limit: 30` and `iteration_limit: 1000`, and a
-benchmark-level cap of `benchmark.max_wall_time: 600`.
+available in `contrib/autoresearch.example.yml`.
 
-There is also a secondary hard benchmark in `data/benchmark_hard.yml` with 10
-persistent hard or slow targets. Use the main benchmark as the primary gate and
-the hard benchmark as a saturation check once the main benchmark starts to
-plateau.
+For the current research phase:
+
+- `data/benchmark_hard.yml` defines the primary `hard10` optimization benchmark
+- `data/benchmark.yml` defines the broader `main15` regression benchmark
+
+`hard10` is where new ideas should compete first. `main15` is the guardrail that
+checks whether a hard-benchmark gain comes at the cost of broader regressions.
 
 Example command:
 
@@ -76,10 +75,11 @@ aizynth_autoresearch --spec contrib/autoresearch.example.yml --output baseline_s
 For each experiment:
 
 1. make one bounded code or config change
-2. rerun the same benchmark with the same seed
-3. compare solved fraction, `first_solution_time`, `first_solution_iteration`, and `search_time`
-4. keep only changes that improve the benchmark according to the objective order
-5. log the result in a TSV file
+2. run `hard10` first with the same seed
+3. if `hard10` improves by the objective order, run `main15`
+4. compare solved fraction, `first_solution_time`, `first_solution_iteration`, and `search_time`
+5. keep only changes that improve `hard10` and do not materially regress `main15`
+6. log the result in a TSV file
 
 If `benchmark.max_wall_time` is set, the harness will stop before starting the next
 target once the remaining benchmark budget falls below the fixed per-target
