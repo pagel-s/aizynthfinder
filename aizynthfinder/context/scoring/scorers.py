@@ -132,15 +132,10 @@ class StateScorer(Scorer):
     def _score(self, item: _Scoreable) -> float:
         in_stock_fraction = self._in_stock_scorer(item)
         max_transform = self._transform_scorer(item)
-        precursor_score = 1.0 / max(len(item.mols if isinstance(item, MctsNode) else list(item.leafs())), 1)
         # A scorer can return a list of float if the item is a list of trees/nodes,
         # but that is not the case here. However this is needed because of mypy
         assert isinstance(in_stock_fraction, float) and isinstance(max_transform, float)
-        return (
-            0.90 * in_stock_fraction
-            + 0.05 * max_transform
-            + 0.05 * precursor_score
-        )
+        return 0.95 * in_stock_fraction + 0.05 * max_transform
 
     def _score_node(self, node: MctsNode) -> float:
         return self._score(node)
