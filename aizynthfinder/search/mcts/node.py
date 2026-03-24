@@ -414,12 +414,6 @@ class MctsNode:
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
-                if self.tree:
-                    cached_value = self.tree.cached_state_value(state)
-                    if cached_value is not None:
-                        self._children_values[child_idx] = max(
-                            self._children_values[child_idx], cached_value
-                        )
                 new_nodes.append(new_node)
         return new_nodes
 
