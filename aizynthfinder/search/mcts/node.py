@@ -375,8 +375,7 @@ class MctsNode:
     def _children_u(self) -> np.ndarray:
         total_visits = np.log(np.sum(self._children_visitations))
         child_visits = np.array(self._children_visitations)
-        exploration = self._algo_config["C"] * np.sqrt(2 * total_visits / child_visits)
-        return exploration * np.array(self._children_priors)
+        return self._algo_config["C"] * np.sqrt(2 * total_visits / child_visits)
 
     def _create_children_nodes(
         self, states: List[MctsState], child_idx: int
