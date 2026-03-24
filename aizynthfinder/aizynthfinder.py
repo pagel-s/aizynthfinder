@@ -210,6 +210,7 @@ class AiZynthFinder:
         assert self.tree is not None
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
+        rescue_c = None
 
         time0 = time.time()
         i = 1
@@ -219,29 +220,42 @@ class AiZynthFinder:
         if show_progress:
             pbar = tqdm(total=self.config.search.iteration_limit, leave=False)
 
-        while (
-            time_past < self.config.search.time_limit
-            and i <= self.config.search.iteration_limit
-        ):
-            if show_progress:
-                pbar.update(1)
-            self.search_stats["iterations"] += 1
+        try:
+            while (
+                time_past < self.config.search.time_limit
+                and i <= self.config.search.iteration_limit
+            ):
+                if (
+                    rescue_c is None
+                    and "first_solution_time" not in self.search_stats
+                    and (
+                        time_past >= self.config.search.time_limit / 3
+                        or i >= max(self.config.search.iteration_limit // 3, 1)
+                    )
+                ):
+                    rescue_c = self._activate_exploration_rescue()
 
-            try:
-                is_solved = self.tree.one_iteration()
-            except StopIteration:
-                break
+                if show_progress:
+                    pbar.update(1)
+                self.search_stats["iterations"] += 1
 
-            if is_solved and "first_solution_time" not in self.search_stats:
-                self.search_stats["first_solution_time"] = time.time() - time0
-                self.search_stats["first_solution_iteration"] = i
+                try:
+                    is_solved = self.tree.one_iteration()
+                except StopIteration:
+                    break
 
-            if self.config.search.return_first and is_solved:
-                self._logger.debug("Found first solved route")
-                self.search_stats["returned_first"] = True
-                break
-            i = i + 1
-            time_past = time.time() - time0
+                if is_solved and "first_solution_time" not in self.search_stats:
+                    self.search_stats["first_solution_time"] = time.time() - time0
+                    self.search_stats["first_solution_iteration"] = i
+
+                if self.config.search.return_first and is_solved:
+                    self._logger.debug("Found first solved route")
+                    self.search_stats["returned_first"] = True
+                    break
+                i = i + 1
+                time_past = time.time() - time0
+        finally:
+            self._restore_exploration_rescue(rescue_c)
 
         if show_progress:
             pbar.close()
@@ -249,6 +263,25 @@ class AiZynthFinder:
         self._logger.debug("Search completed")
         self.search_stats["time"] = time_past
         return time_past
+
+    def _activate_exploration_rescue(self) -> Optional[float]:
+        if self.config.search.algorithm.lower() != "mcts":
+            return None
+
+        original_c = float(self.config.search.algorithm_config["C"])
+        boosted_c = max(original_c, 0.6)
+        if boosted_c == original_c:
+            return None
+
+        self.config.search.algorithm_config["C"] = boosted_c
+        self._logger.debug("Activated exploration stall rescue")
+        self.search_stats["exploration_rescue"] = True
+        return original_c
+
+    def _restore_exploration_rescue(self, rescue_c: Optional[float]) -> None:
+        if rescue_c is None:
+            return
+        self.config.search.algorithm_config["C"] = rescue_c
 
     def _set_random_seed(self) -> None:
         seed = self.config.search.random_seed
