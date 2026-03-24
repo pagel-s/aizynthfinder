@@ -210,6 +210,7 @@ class AiZynthFinder:
         assert self.tree is not None
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
+        staged_cutoffs = self._activate_early_expansion_stage()
 
         time0 = time.time()
         i = 1
@@ -219,32 +220,40 @@ class AiZynthFinder:
         if show_progress:
             pbar = tqdm(total=self.config.search.iteration_limit, leave=False)
 
-        while (
-            time_past < self.config.search.time_limit
-            and i <= self.config.search.iteration_limit
-        ):
+        try:
+            while (
+                time_past < self.config.search.time_limit
+                and i <= self.config.search.iteration_limit
+            ):
+                if staged_cutoffs and i == 151:
+                    self._restore_expansion_cutoffs(staged_cutoffs)
+                    staged_cutoffs = {}
+
+                if show_progress:
+                    pbar.update(1)
+                self.search_stats["iterations"] += 1
+
+                try:
+                    is_solved = self.tree.one_iteration()
+                except StopIteration:
+                    break
+
+                if is_solved and "first_solution_time" not in self.search_stats:
+                    self.search_stats["first_solution_time"] = time.time() - time0
+                    self.search_stats["first_solution_iteration"] = i
+
+                if self.config.search.return_first and is_solved:
+                    self._logger.debug("Found first solved route")
+                    self.search_stats["returned_first"] = True
+                    break
+                i = i + 1
+                time_past = time.time() - time0
+        finally:
+            if staged_cutoffs:
+                self._restore_expansion_cutoffs(staged_cutoffs)
             if show_progress:
-                pbar.update(1)
-            self.search_stats["iterations"] += 1
+                pbar.close()
 
-            try:
-                is_solved = self.tree.one_iteration()
-            except StopIteration:
-                break
-
-            if is_solved and "first_solution_time" not in self.search_stats:
-                self.search_stats["first_solution_time"] = time.time() - time0
-                self.search_stats["first_solution_iteration"] = i
-
-            if self.config.search.return_first and is_solved:
-                self._logger.debug("Found first solved route")
-                self.search_stats["returned_first"] = True
-                break
-            i = i + 1
-            time_past = time.time() - time0
-
-        if show_progress:
-            pbar.close()
         time_past = time.time() - time0
         self._logger.debug("Search completed")
         self.search_stats["time"] = time_past
@@ -256,6 +265,24 @@ class AiZynthFinder:
             return
         random.seed(seed)
         np.random.seed(seed)
+
+    def _activate_early_expansion_stage(self) -> dict:
+        staged_cutoffs = {}
+        if not self.expansion_policy.selection:
+            return staged_cutoffs
+
+        for name in self.expansion_policy.selection:
+            policy = self.expansion_policy[name]
+            cutoff_number = getattr(policy, "cutoff_number", None)
+            if cutoff_number is None or cutoff_number <= 45:
+                continue
+            staged_cutoffs[name] = cutoff_number
+            policy.cutoff_number = 45
+        return staged_cutoffs
+
+    def _restore_expansion_cutoffs(self, staged_cutoffs: dict) -> None:
+        for name, cutoff_number in staged_cutoffs.items():
+            self.expansion_policy[name].cutoff_number = cutoff_number
 
     def _setup_focussed_bonds(self, target_mol: Molecule) -> None:
         """
