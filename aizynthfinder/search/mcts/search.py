@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from numbers import Real
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -55,6 +56,8 @@ class MctsSearchTree:
         else:
             self.root = None
 
+        self._state_value_cache = {}
+
         self._graph: Optional[nx.DiGraph] = None
 
         # For backward compatibility
@@ -98,7 +101,14 @@ class MctsSearchTree:
         value_estimate = self.compute_reward(from_node)
 
         current = from_node
-        while current is not self.root:
+        while True:
+            if isinstance(value_estimate, Real):
+                cached = self._state_value_cache.get(current.state)
+                if cached is None or value_estimate > cached:
+                    self._state_value_cache[current.state] = float(value_estimate)
+
+            if current is self.root:
+                break
             parent = current.parent
             # For mypy, parent should never by None unless current is the root
             assert parent is not None
@@ -213,6 +223,10 @@ class MctsSearchTree:
         dict_ = {"tree": self.root.serialize(mol_ser), "molecules": mol_ser.store}
         with open(filename, "w") as fileobj:
             json.dump(dict_, fileobj, indent=2)
+
+    def cached_state_value(self, state) -> Optional[float]:
+        """Return the best descendant reward seen so far for an equivalent state."""
+        return self._state_value_cache.get(state)
 
     def _check_mode(self) -> str:
         # if no objective weights are supplied, use multi-objective search
