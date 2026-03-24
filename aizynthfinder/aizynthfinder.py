@@ -241,7 +241,7 @@ class AiZynthFinder:
                     and "first_solution_time" not in self.search_stats
                     and i >= 501
                     and (i - 501) % single_precursor_rescue_recheck_interval == 0
-                    and self._has_depth_limited_single_precursor_state(
+                    and self._has_depth_limited_near_solved_state(
                         self.config.search.max_transforms
                     )
                 ):
@@ -284,7 +284,7 @@ class AiZynthFinder:
         random.seed(seed)
         np.random.seed(seed)
 
-    def _has_depth_limited_single_precursor_state(self, max_transforms: int) -> bool:
+    def _has_depth_limited_near_solved_state(self, max_transforms: int) -> bool:
         if not self.tree or not self.tree.root:
             return False
 
@@ -294,7 +294,7 @@ class AiZynthFinder:
             state = node.state
             if (
                 not state.is_solved
-                and len(state.expandable_mols) == 1
+                and len(state.expandable_mols) <= 2
                 and state.max_transforms >= max_transforms
             ):
                 return True
