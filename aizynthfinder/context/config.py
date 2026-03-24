@@ -36,7 +36,7 @@ class _SearchConfiguration:
             "C": 0.4,
             "default_prior": 0.5,
             "use_prior": True,
-            "prune_cycles_in_search": False,
+            "prune_cycles_in_search": True,
             "search_rewards": ["state score"],
             "immediate_instantiation": (),
             "mcts_grouping": "partial",
