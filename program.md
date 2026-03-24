@@ -47,10 +47,10 @@ The current fixed benchmark is defined by `data/benchmark.yml` and includes:
 - `random_seed: 1337`
 - `benchmark.max_wall_time: 600`
 
-There is also a secondary hard benchmark in `data/benchmark_hard.yml`. Use it
-to characterize progress once the main benchmark starts to saturate, or to
-check whether a change helps on the persistent hard cases instead of only making
-easy targets faster.
+There is also a secondary hard benchmark in `data/benchmark_hard.yml` with 10
+persistent hard or slow targets. Use it to characterize progress once the main
+benchmark starts to saturate, or to check whether a change helps on the
+persistent hard cases instead of only making easy targets faster.
 
 These files are evaluation infrastructure and must stay fixed during a research
 run:
@@ -221,7 +221,7 @@ If a change is kept, append one row to `research/accepted_changes.tsv` with:
 
 - the kept algorithm commit
 - its parent commit
-- the benchmark name, for example `main15` or `hard7`
+- the benchmark name, for example `main15` or `hard10`
 - the benchmark metrics
 - the files changed
 - a short change summary

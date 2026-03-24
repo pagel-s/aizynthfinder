@@ -62,7 +62,7 @@ That default benchmark currently uses 15 fixed PaRoutes-derived targets, a
 per-target budget of `time_limit: 30` and `iteration_limit: 1000`, and a
 benchmark-level cap of `benchmark.max_wall_time: 600`.
 
-There is also a secondary hard benchmark in `data/benchmark_hard.yml` with 7
+There is also a secondary hard benchmark in `data/benchmark_hard.yml` with 10
 persistent hard or slow targets. Use the main benchmark as the primary gate and
 the hard benchmark as a saturation check once the main benchmark starts to
 plateau.
