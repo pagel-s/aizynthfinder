@@ -128,14 +128,27 @@ class StateScorer(Scorer):
             scaler_params={"name": "squash", "slope": -1, "yoffset": 0, "xoffset": 4},
         )
         self._in_stock_scorer = FractionInStockScorer(config)
+        self._precursor_scorer = NumberOfPrecursorsScorer(
+            config,
+            scaler_params={"name": "squash", "slope": -1, "yoffset": 0, "xoffset": 4},
+        )
 
     def _score(self, item: _Scoreable) -> float:
         in_stock_fraction = self._in_stock_scorer(item)
         max_transform = self._transform_scorer(item)
+        precursor_score = self._precursor_scorer(item)
         # A scorer can return a list of float if the item is a list of trees/nodes,
         # but that is not the case here. However this is needed because of mypy
-        assert isinstance(in_stock_fraction, float) and isinstance(max_transform, float)
-        return 0.95 * in_stock_fraction + 0.05 * max_transform
+        assert (
+            isinstance(in_stock_fraction, float)
+            and isinstance(max_transform, float)
+            and isinstance(precursor_score, float)
+        )
+        return (
+            0.85 * in_stock_fraction
+            + 0.05 * max_transform
+            + 0.10 * precursor_score
+        )
 
     def _score_node(self, node: MctsNode) -> float:
         return self._score(node)
