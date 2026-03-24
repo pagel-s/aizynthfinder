@@ -280,7 +280,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         templatefile = kwargs["template"]
         maskfile: str = kwargs.get("mask", "")
         self.template_column: str = kwargs.get("template_column", "retro_template")
-        self.cutoff_cumulative: float = float(kwargs.get("cutoff_cumulative", 0.992))
+        self.cutoff_cumulative: float = float(kwargs.get("cutoff_cumulative", 0.991))
         self.cutoff_number: int = int(kwargs.get("cutoff_number", 50))
         self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", True))
         self.use_remote_models: bool = bool(kwargs.get("use_remote_models", False))
