@@ -246,9 +246,14 @@ class MctsNode:
 
         cache_molecules = []
         if self.parent:
+            seen_cache_keys = set()
             for child in self.parent.children:
                 if child is not self:
-                    cache_molecules.extend(child.state.expandable_mols)
+                    for mol in child.state.expandable_mols:
+                        if mol.inchi_key in seen_cache_keys:
+                            continue
+                        seen_cache_keys.add(mol.inchi_key)
+                        cache_molecules.append(mol)
 
         # Calculate the possible actions, fill the child_info lists
         # Actions by default only assumes 1 set of reactants
