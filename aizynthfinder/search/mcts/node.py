@@ -263,9 +263,27 @@ class MctsNode:
 
         # Calculate the possible actions, fill the child_info lists
         # Actions by default only assumes 1 set of reactants
-        actions, priors = self._expansion_policy(
-            self.state.expandable_mols, cache_molecules
-        )
+        width_overrides = []
+        if len(self.state.expandable_mols) == 1 and len(self.state.mols) > 1:
+            for policy_name in self._expansion_policy.selection or []:
+                policy = self._expansion_policy[policy_name]
+                if not hasattr(policy, "cutoff_number"):
+                    continue
+                original_cutoff = policy.cutoff_number
+                widened_cutoff = max(original_cutoff, 60)
+                if widened_cutoff == original_cutoff:
+                    continue
+                width_overrides.append((policy, original_cutoff))
+                policy.cutoff_number = widened_cutoff
+
+        try:
+            actions, priors = self._expansion_policy(
+                self.state.expandable_mols, cache_molecules
+            )
+        finally:
+            for policy, original_cutoff in width_overrides:
+                policy.cutoff_number = original_cutoff
+
         self._fill_children_lists(actions, priors)
 
         # Reverse the expansion if it did not produce any children
