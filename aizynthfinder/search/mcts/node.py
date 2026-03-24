@@ -409,20 +409,11 @@ class MctsNode:
             if self._filter_child_reaction(self._children_actions[child_idx]):
                 self._disable_child(child_idx)
             else:
-                if (
-                    self.tree
-                    and self._degeneracy_check == "full"
-                    and self.tree.has_registered_state(state)
-                ):
-                    self._disable_child(child_idx)
-                    continue
                 new_node = self.__class__(
                     state=state, owner=self.tree, config=self._config, parent=self
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
-                if self.tree and self._degeneracy_check == "full":
-                    self.tree.register_state(state)
                 new_nodes.append(new_node)
         return new_nodes
 

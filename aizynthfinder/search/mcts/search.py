@@ -55,10 +55,6 @@ class MctsSearchTree:
         else:
             self.root = None
 
-        self._registered_states = set()
-        if self.root is not None:
-            self._registered_states.add(self.root.state)
-
         self._graph: Optional[nx.DiGraph] = None
 
         # For backward compatibility
@@ -217,14 +213,6 @@ class MctsSearchTree:
         dict_ = {"tree": self.root.serialize(mol_ser), "molecules": mol_ser.store}
         with open(filename, "w") as fileobj:
             json.dump(dict_, fileobj, indent=2)
-
-    def has_registered_state(self, state) -> bool:
-        """Return if an equivalent state has already been instantiated in the tree."""
-        return state in self._registered_states
-
-    def register_state(self, state) -> None:
-        """Remember an instantiated state so equivalent states can be skipped later."""
-        self._registered_states.add(state)
 
     def _check_mode(self) -> str:
         # if no objective weights are supplied, use multi-objective search
