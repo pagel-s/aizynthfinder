@@ -277,8 +277,6 @@ class MctsNode:
             self.tree.profiling["expansion_calls"] += 1
 
         if not self._algo_config["immediate_instantiation"]:
-            if self.state.max_transforms <= 2 and len(self._children_actions) > 12:
-                self._prefilter_top_children()
             return
         # Instantiate all children actions created by the marked policy,
         # a new list of actions will be iterated over, because it can grow due
@@ -443,18 +441,6 @@ class MctsNode:
             self._children_values = list(self._children_priors)
         else:
             self._children_values = [self._algo_config["default_prior"]] * nactions
-
-    def _prefilter_top_children(self, max_actions: int = 4) -> None:
-        ranked_indices = np.argsort(np.array(self._children_priors))[::-1]
-        checked = 0
-        for child_idx in ranked_indices:
-            if checked >= max_actions:
-                break
-            if self._children_values[child_idx] <= 0:
-                continue
-            if self._filter_child_reaction(self._children_actions[int(child_idx)]):
-                self._disable_child(int(child_idx))
-            checked += 1
 
     def _filter_child_reaction(self, reaction: RetroReaction) -> bool:
         if self._regenerated_blacklisted(reaction):
