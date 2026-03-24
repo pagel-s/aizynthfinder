@@ -38,7 +38,7 @@ class _SearchConfiguration:
             "use_prior": True,
             "prune_cycles_in_search": True,
             "search_rewards": ["state score"],
-            "immediate_instantiation": (),
+            "immediate_instantiation": ("uspto",),
             "mcts_grouping": "partial",
             "search_rewards_weights": [],
         }
