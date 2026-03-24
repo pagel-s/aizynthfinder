@@ -2,6 +2,7 @@
 """
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -545,23 +546,15 @@ class MctsNode:
         Selecting a child node implies instantiating the children nodes.
 
         If the child has already been instantiated, return immediately
-        Otherwise, select the most promising instantiated outcome to return.
+        Otherwise, select a random node of the feasible ones to return
         """
         if self._children[child_idx]:
             return self._children[child_idx]
 
         new_nodes = self._instantiate_child(child_idx)
         if new_nodes:
-            if len(new_nodes) == 1:
-                return new_nodes[0]
-            return max(new_nodes, key=self._node_reward_key)
+            return random.choice(new_nodes)
         return None
-
-    def _node_reward_key(self, node: "MctsNode"):
-        reward = self.tree.compute_reward(node)
-        if isinstance(reward, (list, tuple, np.ndarray)):
-            return tuple(reward)
-        return reward
 
     def _serialize_stats_list(self, name: str) -> List[float]:
         return [float(value) for value in getattr(self, name)]
