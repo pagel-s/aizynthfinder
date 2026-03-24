@@ -39,7 +39,7 @@ class _SearchConfiguration:
             "prune_cycles_in_search": True,
             "search_rewards": ["state score"],
             "immediate_instantiation": (),
-            "mcts_grouping": "partial",
+            "mcts_grouping": "full",
             "search_rewards_weights": [],
         }
     )
