@@ -414,15 +414,6 @@ class MctsNode:
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
-                if (
-                    self.tree
-                    and not state.is_solved
-                    and len(state.expandable_mols) == 1
-                    and state.max_transforms >= self._config.search.max_transforms
-                ):
-                    self.tree.profiling["single_precursor_depth_hits"] = (
-                        self.tree.profiling.get("single_precursor_depth_hits", 0) + 1
-                    )
                 new_nodes.append(new_node)
         return new_nodes
 
