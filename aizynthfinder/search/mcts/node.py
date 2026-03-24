@@ -82,8 +82,6 @@ class MctsNode:
         self._children_actions: List[RetroReaction] = []
         self._children: List[Optional[MctsNode]] = []
         self._children_idx = {}
-        self._children_state_idx = {}
-        self._children_expandables_idx = {}
 
         self.blacklist = set(mol.inchi_key for mol in state.expandable_mols)
         if parent:
@@ -160,11 +158,6 @@ class MctsNode:
         node._children_idx = {
             id(child): idx for idx, child in enumerate(node._children) if child is not None
         }
-        for idx, child in enumerate(node._children):
-            if child is None or child.is_terminal():
-                continue
-            node._children_state_idx[child.state] = idx
-            node._children_expandables_idx[child.state.expandables_hash] = idx
         return node
 
     @property
@@ -421,11 +414,6 @@ class MctsNode:
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
-                if not new_node.is_terminal():
-                    self._children_state_idx[new_node.state] = child_idx
-                    self._children_expandables_idx[
-                        new_node.state.expandables_hash
-                    ] = child_idx
                 new_nodes.append(new_node)
         return new_nodes
 
@@ -449,9 +437,6 @@ class MctsNode:
         nactions = len(actions)
         self._children_visitations = [1] * nactions
         self._children = [None] * nactions
-        self._children_idx = {}
-        self._children_state_idx = {}
-        self._children_expandables_idx = {}
         if self._algo_config["use_prior"]:
             self._children_values = list(self._children_priors)
         else:
@@ -488,16 +473,25 @@ class MctsNode:
         of the previously created equal state.
         """
 
+        def equal_states(query_state):
+            if self._degeneracy_check == "partial":
+                return query_state.expandables_hash == new_state.expandables_hash
+            return query_state == new_state
+
         if self._degeneracy_check not in ["partial", "full"]:
             return False
-        if self._degeneracy_check == "partial":
-            previous_idx = self._children_expandables_idx.get(new_state.expandables_hash)
-        else:
-            previous_idx = self._children_state_idx.get(new_state)
+        previous_action = None
+        for child, action in zip(self._children, self._children_actions):
+            if (
+                child is not None
+                and not child.is_terminal()
+                and equal_states(child.state)
+            ):
+                previous_action = action
+                break
 
-        if previous_idx is None:
+        if previous_action is None:
             return False
-        previous_action = self._children_actions[previous_idx]
 
         # No need to copy the metadata because it will be the same
         if previous_action is self._children_actions[child_idx]:
