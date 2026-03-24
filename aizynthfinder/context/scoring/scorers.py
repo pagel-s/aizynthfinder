@@ -151,13 +151,9 @@ class StateScorer(Scorer):
         )
 
     def _score_node(self, node: MctsNode) -> float:
-        if node.state.is_solved:
-            return 1.0
         return self._score(node)
 
     def _score_reaction_tree(self, tree: ReactionTree) -> float:
-        if all(leaf in self._config.stock for leaf in tree.leafs()):
-            return 1.0
         return self._score(tree)
 
 
