@@ -37,7 +37,7 @@ class _SearchConfiguration:
             "default_prior": 0.5,
             "use_prior": True,
             "prune_cycles_in_search": True,
-            "search_rewards": ["route cost"],
+            "search_rewards": ["state score"],
             "immediate_instantiation": (),
             "mcts_grouping": "partial",
             "search_rewards_weights": [],
