@@ -43,7 +43,7 @@ class _SearchConfiguration:
             "search_rewards_weights": [],
         }
     )
-    max_transforms: int = 6
+    max_transforms: int = 5
     iteration_limit: int = 100
     time_limit: int = 120
     random_seed: Optional[int] = None
