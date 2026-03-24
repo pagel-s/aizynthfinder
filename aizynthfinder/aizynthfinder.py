@@ -178,8 +178,6 @@ class AiZynthFinder:
         self._setup_search_tree()
         self.analysis = None
         self.routes = RouteCollection([])
-        self.filter_policy.reset_cache()
-        self.expansion_policy.reset_cache()
 
     def stock_info(self) -> StrDict:
         """
