@@ -209,15 +209,32 @@ Do not accumulate complexity for tiny or ambiguous wins.
 - an equal benchmark with simpler code can be worth keeping
 - a tiny improvement that adds brittle complexity is usually not worth keeping
 
-## Good First Experiments
+## Good Next Experiments
 
-- reduce expansion width without hurting solved fraction
-- change MCTS `C` and prior handling
-- change `max_transforms`
-- compare `mcts` and `retrostar`
-- improve filtering or duplicate-state handling
-- reduce repeated work in expansion and child instantiation
-- try better reward combinations than the default `state score`
+At this point, do not over-focus on tiny single-knob sweeps unless there is a
+strong reason. Prefer changes that alter search behavior or search-system
+efficiency in a more structural way.
+
+Good directions now:
+
+- staged or adaptive search instead of one fixed search schedule
+- hybrid strategies that mix MCTS and Retro* style behavior
+- better expansion control than static width cutoffs, for example depth-aware or prior-aware branching
+- improved duplicate detection, state merging, or subtree reuse
+- better child selection logic than the current plain UCB-style scoring
+- targeted reaction filtering that removes low-value branches without hurting solved fraction
+- batching and caching changes that reduce repeated policy, filter, or reactant work
+- route or state rewards that better correlate with actually reaching purchasable leaves
+- small structural additions to the benchmark harness that improve research speed, observability, or safety without changing evaluation semantics
+
+Lower-priority directions:
+
+- very small retuning of `C`
+- very small retuning of `max_transforms`
+- very small retuning of width cutoffs
+
+Those may still help, but they are no longer the most interesting default moves
+once the obvious baseline tuning has already been explored.
 
 ## Autonomy
 
