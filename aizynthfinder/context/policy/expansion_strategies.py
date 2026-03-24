@@ -309,6 +309,11 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
                 f"The number of templates ({len(self.templates)}) does not agree with the "  # type: ignore
                 f"output dimensions of the model ({self.model.output_size})"
             )
+        self._template_records = []
+        for template_code, row in self.templates.iterrows():
+            metadata = row.to_dict()
+            template = metadata.pop(self.template_column)
+            self._template_records.append((template_code, template, metadata))
         self._cache: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
 
     def get_actions(
@@ -332,22 +337,23 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
 
         for mol in molecules:
             probable_transforms_idx, probs = self._cache[mol.inchi_key]
-            possible_moves = self.templates.iloc[probable_transforms_idx]
             if self.rescale_prior:
                 probs /= probs.sum()
             priors.extend(probs)
-            for idx, (move_index, move) in enumerate(possible_moves.iterrows()):
-                metadata = dict(move)
-                del metadata[self.template_column]
+            for idx, template_idx in enumerate(probable_transforms_idx):
+                move_index, template, base_metadata = self._template_records[
+                    int(template_idx)
+                ]
+                metadata = dict(base_metadata)
                 metadata["policy_probability"] = float(probs[idx].round(4))
                 metadata["policy_probability_rank"] = idx
                 metadata["policy_name"] = self.key
                 metadata["template_code"] = move_index
-                metadata["template"] = move[self.template_column]
+                metadata["template"] = template
                 possible_actions.append(
                     TemplatedRetroReaction(
                         mol,
-                        smarts=move[self.template_column],
+                        smarts=template,
                         metadata=metadata,
                         use_rdchiral=self.use_rdchiral,
                     )
