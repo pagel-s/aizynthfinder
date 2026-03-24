@@ -151,10 +151,7 @@ class StateScorer(Scorer):
         )
 
     def _score_node(self, node: MctsNode) -> float:
-        score = self._score(node)
-        if node.state.max_transforms > 0 and len(node.state.expandable_mols) == 1:
-            return min(1.0, score + 0.05)
-        return score
+        return self._score(node)
 
     def _score_reaction_tree(self, tree: ReactionTree) -> float:
         return self._score(tree)
