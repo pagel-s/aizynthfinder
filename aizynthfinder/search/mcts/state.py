@@ -50,11 +50,8 @@ class MctsState:
         self._stock_availability: Optional[List[str]] = None
         self.is_solved = all(self.in_stock_list)
         self.max_transforms = max(mol.transform for mol in self.mols)
-        max_transforms_limit = config.search.max_transforms
-        if len(self.expandable_mols) <= 1:
-            max_transforms_limit += 1
         self.is_terminal = (
-            self.max_transforms >= max_transforms_limit
+            self.max_transforms >= config.search.max_transforms
         ) or self.is_solved
 
         inchis = [mol.inchi_key for mol in self.mols]
