@@ -245,13 +245,17 @@ def _should_stop_before_target(
     return remaining_time < float(spec.search["time_limit"])
 
 
-def main() -> None:
-    """Entry point for the aizynth_autoresearch command."""
-    args = _get_arguments()
-    file_level_logging = logging.DEBUG if args.log_to_file else None
+def run_benchmark_from_spec(
+    spec_filename: str,
+    output_filename: str,
+    details_output_filename: str,
+    log_to_file: bool = False,
+) -> Dict[str, Any]:
+    """Run a benchmark from a YAML spec and persist the outputs."""
+    file_level_logging = logging.DEBUG if log_to_file else None
     setup_logger(logging.INFO, file_level_logging)
 
-    spec = BenchmarkSpec.from_file(args.spec)
+    spec = BenchmarkSpec.from_file(spec_filename)
     benchmark_data = _load_benchmark_smiles(spec.benchmark_smiles)
     finder = AiZynthFinder(configfile=spec.config)
     _apply_benchmark_spec(finder, spec)
@@ -293,31 +297,40 @@ def main() -> None:
     summary["stopped_early"] = stopped_early
     summary["max_wall_time"] = spec.benchmark_max_wall_time
 
-    with open(args.output, "w") as fileobj:
-        json.dump(
-            {
-                "spec": {
-                    "config": spec.config,
-                    "benchmark_smiles": spec.benchmark_smiles,
-                    "max_wall_time": spec.benchmark_max_wall_time,
-                    "search": spec.search,
-                    "policy": spec.policy,
-                    "filter": spec.filter,
-                    "stocks": spec.stocks,
-                },
-                "summary": summary,
-            },
-            fileobj,
-            indent=2,
-        )
-    save_datafile(results_df, args.details_output)
+    payload = {
+        "spec": {
+            "config": spec.config,
+            "benchmark_smiles": spec.benchmark_smiles,
+            "max_wall_time": spec.benchmark_max_wall_time,
+            "search": spec.search,
+            "policy": spec.policy,
+            "filter": spec.filter,
+            "stocks": spec.stocks,
+        },
+        "summary": summary,
+    }
+    with open(output_filename, "w") as fileobj:
+        json.dump(payload, fileobj, indent=2)
+    save_datafile(results_df, details_output_filename)
 
     logger().info(
         f"Benchmark complete: solved {summary['n_solved']}/{summary['n_targets_run']} "
         f"run targets, solved_fraction={summary['solved_fraction']:.3f}"
     )
-    logger().info(f"Summary saved to {args.output}")
-    logger().info(f"Details saved to {args.details_output}")
+    logger().info(f"Summary saved to {output_filename}")
+    logger().info(f"Details saved to {details_output_filename}")
+    return payload
+
+
+def main() -> None:
+    """Entry point for the aizynth_autoresearch command."""
+    args = _get_arguments()
+    run_benchmark_from_spec(
+        spec_filename=args.spec,
+        output_filename=args.output,
+        details_output_filename=args.details_output,
+        log_to_file=args.log_to_file,
+    )
 
 
 if __name__ == "__main__":

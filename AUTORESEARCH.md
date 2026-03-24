@@ -69,17 +69,16 @@ checks whether a hard-benchmark gain comes at the cost of broader regressions.
 Example command:
 
 ```bash
-aizynth_autoresearch --spec contrib/autoresearch.example.yml --output baseline_summary.json --details-output baseline_details.json
+aizynth_autoresearch_driver --description "example experiment"
 ```
 
 For each experiment:
 
 1. make one bounded code or config change
-2. run `hard10` first with the same seed
-3. if `hard10` improves by the objective order, run `main15`
-4. compare solved fraction, `first_solution_time`, `first_solution_iteration`, and `search_time`
-5. keep only changes that improve `hard10` and do not materially regress `main15`
-6. log the result in a TSV file
+2. run the paired driver, which evaluates `hard10` first and only runs `main15` if `hard10` improves
+3. compare solved fraction, `first_solution_time`, `first_solution_iteration`, and `search_time`
+4. keep only changes that improve `hard10` and do not materially regress `main15`
+5. rely on the driver to log the result rows in `results.tsv`
 
 If `benchmark.max_wall_time` is set, the harness will stop before starting the next
 target once the remaining benchmark budget falls below the fixed per-target

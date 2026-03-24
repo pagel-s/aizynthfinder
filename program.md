@@ -104,22 +104,22 @@ quality, search efficiency, or research velocity under the same benchmark.
 
 ## Benchmark Command
 
-Run the hard benchmark first for new ideas:
+Use the paired experiment driver for the current phase:
 
 ```bash
-python -m aizynthfinder.tools.autoresearch --spec data/benchmark_hard.yml --output benchmark_hard_summary.json --details-output benchmark_hard_details.json > run_hard.log 2>&1
+python -m aizynthfinder.tools.autoresearch_driver --description "<short experiment summary>"
 ```
 
-This is the default experiment benchmark for the current phase.
+This command:
 
-Only if the hard benchmark result improves `hard10` by the objective order, run
-the broad regression benchmark:
+- resolves the current commit automatically
+- runs `hard10` first
+- skips `main15` if `hard10` does not improve over the latest kept `hard10` row
+- runs `main15` only when `hard10` improves
+- appends `results.tsv` rows automatically in the correct order
 
-```bash
-python -m aizynthfinder.tools.autoresearch --spec data/benchmark.yml --output benchmark_summary.json --details-output benchmark_details.json > run.log 2>&1
-```
-
-Do not invert this order unless the human explicitly changes the policy.
+Do not manually append `results.tsv` rows during the current phase unless the
+human explicitly asks you to repair old data.
 
 ## Objective
 
@@ -199,10 +199,8 @@ The benchmark writes:
 
 - `benchmark_hard_summary.json` — hard-benchmark metrics and exact fixed hard spec
 - `benchmark_hard_details.json` — per-target hard-benchmark results
-- `run_hard.log` — full hard-benchmark command output
 - `benchmark_summary.json` — benchmark-level metrics and the exact fixed spec
 - `benchmark_details.json` — per-target results
-- `run.log` — full command output
 
 The source of truth for optimization decisions in the current phase is
 `benchmark_hard_summary.json`. Use `benchmark_summary.json` as the broad
@@ -213,8 +211,8 @@ every kept algorithmic change.
 
 ## Logging Results
 
-When an experiment finishes, append one row to `results.tsv` for each benchmark
-that was executed.
+When an experiment finishes, the paired experiment driver appends one row to
+`results.tsv` for each benchmark that was executed.
 
 Use tab-separated columns with this header:
 
@@ -236,7 +234,7 @@ For a commit that runs both benchmarks, always write the `hard10` row first and
 the `main15` row second. Do not log a `main15` row without a corresponding
 `hard10` row for the same commit in this research phase.
 
-Do not commit `results.tsv`.
+Do not commit `results.tsv`. Do not hand-edit it during normal experiment runs.
 
 Do commit `research/accepted_changes.tsv`. That file is the tracked summary of
 accepted changes for later paper writing.
@@ -250,15 +248,12 @@ Then loop forever:
 1. Check the current branch and current best commit.
 2. Make one bounded algorithmic change in the editable surface.
 3. Commit the change.
-4. Run the `hard10` benchmark command and redirect output to `run_hard.log`.
-5. If `benchmark_hard_summary.json` is missing or invalid, inspect `tail -n 50 run_hard.log`.
+4. Run the paired experiment driver with the current experiment description.
+5. If `benchmark_hard_summary.json` is missing or invalid, inspect the command output and the generated JSON files.
 6. If the failure is trivial and directly caused by the last edit, fix it and re-run once.
-7. Record the `hard10` row in `results.tsv` immediately.
-8. Compare the `hard10` result against the current best using the objective order above.
-9. If the `hard10` result is clearly worse, discard and revert without running `main15`.
-10. If the `hard10` result improves by the objective order, run `main15` and record that row after the `hard10` row.
-11. Keep the change only if it improves `hard10` and passes the `main15` regression gate.
-12. If it fails the regression gate, discard and revert to the previous best commit.
+7. Read the appended `results.tsv` rows and the generated benchmark summaries.
+8. Keep the change only if the driver outcome and the benchmark outputs support it.
+9. If it is worse or fails the regression gate, revert to the previous best commit.
 
 If a change is kept, append one row to `research/accepted_changes.tsv` with:
 
