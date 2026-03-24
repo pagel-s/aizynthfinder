@@ -284,6 +284,7 @@ class TemplatedRetroReaction(RetroReaction):
     """
 
     _required_kwargs = ["smarts"]
+    _rd_reaction_cache = {}
 
     def __init__(
         self,
@@ -306,7 +307,11 @@ class TemplatedRetroReaction(RetroReaction):
     def rd_reaction(self) -> RdReaction:
         """Return the RDKit reaction created from the SMART"""
         if self._rd_reaction is None:
-            self._rd_reaction = AllChem.ReactionFromSmarts(self.smarts)
+            cached_reaction = self.__class__._rd_reaction_cache.get(self.smarts)
+            if cached_reaction is None:
+                cached_reaction = AllChem.ReactionFromSmarts(self.smarts)
+                self.__class__._rd_reaction_cache[self.smarts] = cached_reaction
+            self._rd_reaction = cached_reaction
         return self._rd_reaction
 
     def to_dict(self) -> StrDict:
