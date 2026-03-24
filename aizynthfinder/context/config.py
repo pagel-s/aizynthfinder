@@ -30,7 +30,7 @@ class _PostprocessingConfiguration:
 
 @dataclass
 class _SearchConfiguration:
-    algorithm: str = "mcts"
+    algorithm: str = "retrostar"
     algorithm_config: Dict[str, Any] = field(
         default_factory=lambda: {
             "C": 1.0,
