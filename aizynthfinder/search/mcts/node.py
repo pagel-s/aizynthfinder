@@ -454,8 +454,7 @@ class MctsNode:
         The check can be "partial" in which the equality is based only on the expandable molecules,
         or "full" in which the equality is based on all molecules in the state.
 
-        The comparison will not be made on unexpanded children nodes
-        or terminal children nodes.
+        The comparison will not be made on unexpanded children nodes.
 
         The metadata of the degenerate action will be added to the metadata
         of the previously created equal state.
@@ -470,11 +469,7 @@ class MctsNode:
             return False
         previous_action = None
         for child, action in zip(self._children, self._children_actions):
-            if (
-                child is not None
-                and not child.is_terminal()
-                and equal_states(child.state)
-            ):
+            if child is not None and equal_states(child.state):
                 previous_action = action
                 break
 
