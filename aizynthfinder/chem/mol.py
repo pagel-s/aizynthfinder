@@ -41,6 +41,8 @@ class Molecule:
     :raises MoleculeException: if neither rd_mol or smiles is given, or if the molecule could not be sanitized
     """
 
+    _global_fingerprints = {}
+
     def __init__(
         self,
         rd_mol: Optional[RdMol] = None,
@@ -167,12 +169,15 @@ class Molecule:
 
         if key not in self._fingerprints:
             self.sanitize()
-            bitvect = AllChem.GetMorganFingerprintAsBitVect(
-                self.rd_mol, *key, useChirality=chiral
-            )
-            array = np.zeros((1,))
-            DataStructs.ConvertToNumpyArray(bitvect, array)
-            self._fingerprints[key] = array
+            global_key = (self.inchi_key, key)
+            if global_key not in self._global_fingerprints:
+                bitvect = AllChem.GetMorganFingerprintAsBitVect(
+                    self.rd_mol, *key, useChirality=chiral
+                )
+                array = np.zeros((1,))
+                DataStructs.ConvertToNumpyArray(bitvect, array)
+                self._global_fingerprints[global_key] = array
+            self._fingerprints[key] = self._global_fingerprints[global_key]
 
         return self._fingerprints[key]
 
