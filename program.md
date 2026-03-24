@@ -62,20 +62,31 @@ research loop unless the human explicitly asks to change the evaluation setup.
 
 ## Editable Surface
 
-Prefer making changes only in the algorithmic search surface of the repo. The
-main editable files are:
+The benchmark contract is fixed. The code surface is not.
+
+Any source code in the repo is fair game if changing it could plausibly improve
+route-finding performance on the fixed benchmark. Do not artificially limit
+yourself to a tiny file allowlist once progress starts to stall.
+
+The highest-yield files are still likely to be:
 
 - `aizynthfinder/aizynthfinder.py`
 - `aizynthfinder/context/config.py`
-- `aizynthfinder/context/policy/expansion_strategies.py`
-- `aizynthfinder/context/scoring/scorers.py`
-- `aizynthfinder/search/mcts/search.py`
-- `aizynthfinder/search/mcts/node.py`
-- `aizynthfinder/search/retrostar/search_tree.py`
-- `aizynthfinder/search/retrostar/cost.py`
+- `aizynthfinder/context/policy/`
+- `aizynthfinder/context/scoring/`
+- `aizynthfinder/search/`
+- `aizynthfinder/analysis/`
 
-You may touch closely related source files if needed for a coherent algorithmic
-change, but do not widen scope casually.
+You may also:
+
+- add new source files or helper modules
+- add profiling or instrumentation
+- add small support utilities for experiment orchestration
+- update tests if the code change legitimately requires it
+- modify `aizynthfinder/tools/autoresearch.py` if the benchmark semantics stay fixed
+
+Do not widen scope for cosmetic reasons. Widen it only when it helps search
+quality, search efficiency, or research velocity under the same benchmark.
 
 ## Benchmark Command
 
@@ -102,30 +113,35 @@ If two runs are effectively tied on these metrics, prefer the simpler change.
 
 ## What You Can Change
 
-Everything that affects the search algorithm or search efficiency is fair game,
-as long as the benchmark contract stays fixed. High-value directions include:
+Anything that improves research progress under the fixed benchmark is fair game,
+including both algorithmic changes and support changes around the algorithm.
+
+Examples:
 
 - MCTS selection behavior such as `C`, prior usage, grouping, reward handling
-- expansion width or pruning logic
-- search depth handling
+- expansion width, branching control, and pruning logic
+- search depth handling and staged search schedules
 - reaction filtering and cycle pruning
 - multi-policy balancing, including RingBreaker combinations
-- Retro* versus MCTS
+- Retro* versus MCTS, or hybrid search strategies
 - caching, batching, and child-instantiation efficiency
 - route scoring that guides search more effectively
+- benchmark instrumentation, profiling counters, and result summaries
+- small framework changes that let future experiments run faster or more safely
 
 ## What You Cannot Change
 
 - the target set
-- the benchmark spec
-- the benchmark harness
+- the benchmark objective order
 - the benchmark seed
 - the benchmark wall-clock budget
+- the meaning of the benchmark metrics
 - model, stock, or filter assets used by the benchmark
-- dependency files or package installation
+- dependency files or package installation unless the human explicitly asks
 
-The point is to improve the code under a fixed evaluation, not to move the
-goalposts.
+You may improve the benchmark harness, but not in ways that move the goalposts.
+The point is to improve the system under a fixed evaluation, not to make the
+evaluation easier to win.
 
 ## Output Files
 
