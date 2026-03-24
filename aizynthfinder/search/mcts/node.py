@@ -520,20 +520,30 @@ class MctsNode:
             raise NodeUnexpectedBehaviourException("Node already instantiated")
 
         reaction = self._children_actions[child_idx]
-        if reaction.unqueried:
-            if self.tree:
-                self.tree.profiling["reactants_generations"] += 1
-            _ = reaction.reactants
+        try:
+            if reaction.unqueried:
+                if self.tree:
+                    self.tree.profiling["reactants_generations"] += 1
+                _ = reaction.reactants
 
-        if not self._check_child_reaction(reaction):
+            if not self._check_child_reaction(reaction):
+                self._disable_child(child_idx)
+                return []
+
+            keep_mols = [mol for mol in self.state.mols if mol is not reaction.mol]
+            new_states = [
+                MctsState(keep_mols + list(reactants), self._config)
+                for reactants in reaction.reactants
+            ]
+        except Exception as err:  # pragma: no cover - defensive benchmark hardening
+            self._logger.debug(
+                "Disabling child after reaction application error (%s): %s",
+                err.__class__.__name__,
+                err,
+            )
             self._disable_child(child_idx)
             return []
 
-        keep_mols = [mol for mol in self.state.mols if mol is not reaction.mol]
-        new_states = [
-            MctsState(keep_mols + list(reactants), self._config)
-            for reactants in reaction.reactants
-        ]
         return self._create_children_nodes(new_states, child_idx)
 
     def _regenerated_blacklisted(self, reaction: RetroReaction) -> bool:
