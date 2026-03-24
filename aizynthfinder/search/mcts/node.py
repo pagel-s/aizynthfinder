@@ -414,6 +414,13 @@ class MctsNode:
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
+                if len(states) > 1 and self.tree:
+                    child_reward = self.tree.compute_reward(new_node)
+                    if isinstance(child_reward, (float, int, np.floating)):
+                        self._children_values[child_idx] = (
+                            0.5 * self._children_values[child_idx]
+                            + 0.5 * float(child_reward)
+                        )
                 new_nodes.append(new_node)
         return new_nodes
 
