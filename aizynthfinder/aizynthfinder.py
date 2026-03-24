@@ -210,7 +210,6 @@ class AiZynthFinder:
         assert self.tree is not None
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
-        rescue_settings = None
 
         time0 = time.time()
         i = 1
@@ -220,42 +219,29 @@ class AiZynthFinder:
         if show_progress:
             pbar = tqdm(total=self.config.search.iteration_limit, leave=False)
 
-        try:
-            while (
-                time_past < self.config.search.time_limit
-                and i <= self.config.search.iteration_limit
-            ):
-                if (
-                    rescue_settings is None
-                    and "first_solution_time" not in self.search_stats
-                    and (
-                        time_past >= self.config.search.time_limit / 3
-                        or i >= max(self.config.search.iteration_limit // 3, 1)
-                    )
-                ):
-                    rescue_settings = self._activate_stall_rescue()
+        while (
+            time_past < self.config.search.time_limit
+            and i <= self.config.search.iteration_limit
+        ):
+            if show_progress:
+                pbar.update(1)
+            self.search_stats["iterations"] += 1
 
-                if show_progress:
-                    pbar.update(1)
-                self.search_stats["iterations"] += 1
+            try:
+                is_solved = self.tree.one_iteration()
+            except StopIteration:
+                break
 
-                try:
-                    is_solved = self.tree.one_iteration()
-                except StopIteration:
-                    break
+            if is_solved and "first_solution_time" not in self.search_stats:
+                self.search_stats["first_solution_time"] = time.time() - time0
+                self.search_stats["first_solution_iteration"] = i
 
-                if is_solved and "first_solution_time" not in self.search_stats:
-                    self.search_stats["first_solution_time"] = time.time() - time0
-                    self.search_stats["first_solution_iteration"] = i
-
-                if self.config.search.return_first and is_solved:
-                    self._logger.debug("Found first solved route")
-                    self.search_stats["returned_first"] = True
-                    break
-                i = i + 1
-                time_past = time.time() - time0
-        finally:
-            self._restore_stall_rescue(rescue_settings)
+            if self.config.search.return_first and is_solved:
+                self._logger.debug("Found first solved route")
+                self.search_stats["returned_first"] = True
+                break
+            i = i + 1
+            time_past = time.time() - time0
 
         if show_progress:
             pbar.close()
@@ -263,38 +249,6 @@ class AiZynthFinder:
         self._logger.debug("Search completed")
         self.search_stats["time"] = time_past
         return time_past
-
-    def _activate_stall_rescue(self) -> Optional[List[Tuple[object, int]]]:
-        """
-        Widen active template-policy expansion once a search has clearly stalled.
-
-        The rescue applies only for the current target search and is restored when
-        `tree_search` exits.
-        """
-        overrides = []
-        for policy_name in self.expansion_policy.selection or []:
-            policy = self.expansion_policy[policy_name]
-            if not hasattr(policy, "cutoff_number"):
-                continue
-            original_cutoff = policy.cutoff_number
-            widened_cutoff = max(original_cutoff, 60)
-            if widened_cutoff == original_cutoff:
-                continue
-            overrides.append((policy, original_cutoff))
-            policy.cutoff_number = widened_cutoff
-        if overrides:
-            self._logger.debug("Activated stall rescue expansion widening")
-            self.search_stats["stall_rescue"] = True
-        return overrides or None
-
-    @staticmethod
-    def _restore_stall_rescue(
-        rescue_settings: Optional[List[Tuple[object, int]]]
-    ) -> None:
-        if not rescue_settings:
-            return
-        for policy, original_cutoff in rescue_settings:
-            policy.cutoff_number = original_cutoff
 
     def _set_random_seed(self) -> None:
         seed = self.config.search.random_seed
