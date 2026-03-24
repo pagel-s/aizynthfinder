@@ -213,6 +213,7 @@ class AiZynthFinder:
         original_max_transforms = self.config.search.max_transforms
         depth_rescue_activated = False
         single_precursor_rescue_activated = False
+        single_precursor_rescue_recheck_interval = 50
 
         time0 = time.time()
         i = 1
@@ -239,7 +240,10 @@ class AiZynthFinder:
                     and not single_precursor_rescue_activated
                     and "first_solution_time" not in self.search_stats
                     and i >= 501
-                    and self.tree.single_precursor_rescue_available
+                    and (i - 501) % single_precursor_rescue_recheck_interval == 0
+                    and self._has_depth_limited_single_precursor_state(
+                        self.config.search.max_transforms
+                    )
                 ):
                     self.config.search.max_transforms = original_max_transforms + 2
                     single_precursor_rescue_activated = True
@@ -279,6 +283,23 @@ class AiZynthFinder:
             return
         random.seed(seed)
         np.random.seed(seed)
+
+    def _has_depth_limited_single_precursor_state(self, max_transforms: int) -> bool:
+        if not self.tree or not self.tree.root:
+            return False
+
+        nodes = [self.tree.root]
+        while nodes:
+            node = nodes.pop()
+            state = node.state
+            if (
+                not state.is_solved
+                and len(state.expandable_mols) == 1
+                and state.max_transforms >= max_transforms
+            ):
+                return True
+            nodes.extend(node.children)
+        return False
 
     def _setup_focussed_bonds(self, target_mol: Molecule) -> None:
         """
