@@ -47,12 +47,20 @@ The current fixed benchmark is defined by `data/benchmark.yml` and includes:
 - `random_seed: 1337`
 - `benchmark.max_wall_time: 600`
 
+There is also a secondary hard benchmark in `data/benchmark_hard.yml`. Use it
+to characterize progress once the main benchmark starts to saturate, or to
+check whether a change helps on the persistent hard cases instead of only making
+easy targets faster.
+
 These files are evaluation infrastructure and must stay fixed during a research
 run:
 
 - `data/benchmark.yml`
+- `data/benchmark_hard.yml`
 - `data/benchmark.smi`
+- `data/benchmark_hard.smi`
 - `data/benchmark_manifest.csv`
+- `data/benchmark_hard_manifest.csv`
 - `data/config.yml`
 - `aizynthfinder/tools/autoresearch.py`
 - `tests/`
@@ -97,6 +105,15 @@ python -m aizynthfinder.tools.autoresearch --spec data/benchmark.yml --output be
 ```
 
 Do not use a different spec during the run.
+
+The hard benchmark uses:
+
+```bash
+python -m aizynthfinder.tools.autoresearch --spec data/benchmark_hard.yml --output benchmark_hard_summary.json --details-output benchmark_hard_details.json > run_hard.log 2>&1
+```
+
+Use the hard benchmark as a secondary characterization benchmark, not as a
+replacement for the primary one unless the human explicitly changes the policy.
 
 ## Objective
 
@@ -159,6 +176,9 @@ The benchmark writes:
 
 The source of truth for keep/discard decisions is `benchmark_summary.json`.
 
+For publication tracking, also maintain `research/accepted_changes.tsv` for
+every kept algorithmic change.
+
 ## Logging Results
 
 When an experiment finishes, append one row to `results.tsv`.
@@ -177,6 +197,9 @@ Use:
 
 Do not commit `results.tsv`.
 
+Do commit `research/accepted_changes.tsv`. That file is the tracked summary of
+accepted changes for later paper writing.
+
 ## The Experiment Loop
 
 The first run must always be the baseline with no code changes.
@@ -193,6 +216,18 @@ Then loop forever:
 8. Compare against the current best using the objective order above.
 9. If the new run is better, keep the commit and continue from there.
 10. If it is worse or tied without a compelling simplification win, revert to the previous best commit.
+
+If a change is kept, append one row to `research/accepted_changes.tsv` with:
+
+- the kept algorithm commit
+- its parent commit
+- the benchmark name, for example `main15` or `hard7`
+- the benchmark metrics
+- the files changed
+- a short change summary
+- a one-sentence mechanistic hypothesis for why it helped
+
+This tracked log is part of the research artifact and should stay publication-friendly.
 
 ## Anti-Local-Optimum Rules
 

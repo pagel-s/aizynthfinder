@@ -1,0 +1,3 @@
+algorithm_commit	parent_commit	benchmark	commit_status	n_targets	solved_fraction	n_solved	median_first_solution_s	median_first_solution_iter	mean_search_s	benchmark_wall_s	files_changed	change_summary	mechanistic_hypothesis
+b01db19	-	main15	baseline	15	0.800000	12	1.282046	44.5	8.101641	123.097637	-	baseline current algorithm on primary benchmark	reference point for later accepted changes on the main benchmark
+b01db19	-	hard7	baseline	7	0.571429	4	10.496256	304.5	16.907978	118.947591	-	baseline current algorithm on hard benchmark	reference point for later accepted changes on the persistent hard targets

@@ -1,0 +1,8 @@
+name,smiles,baseline_is_solved_30s,baseline_search_time_s,selection_reason
+n5_screen_16,NCCCc1n[nH]c2c(Cl)ccc(Nc3c(-c4ncccn4)oc4cnccc34)c12,false,15.482647,persistent unsolved; hits iteration cap before time cap
+n5_screen_15,CS(=O)(=O)OCCC[C@H]1C[C@H](c2cccc(C(F)(F)F)c2)N(c2ccc(Oc3ccc(Cl)cc3)cc2)C1=O,false,28.043708,persistent unsolved near cap
+n5_screen_8,CC(=O)OC(c1cn2c(n1)CN(Cc1ccccc1)CC2)C1(Br)C(=O)N2C(C(=O)OCc3ccc([N+](=O)[O-])cc3)=CS[C@@H]21,false,30.029542,persistent unsolved at time cap
+n5_screen_3,CSCCCNc1nccc(-c2sc(N3CCOCC3)nc2-c2cccc(NS(=O)(=O)c3c(F)cccc3F)c2F)n1,true,15.076100,slow solved target
+n5_screen_22,Cc1c(-c2ccc(OCCCl)cc2)ccc2c1ncn2C(c1ccccc1)(c1ccccc1)c1ccccc1,true,10.551173,slow solved target
+n5_screen_12,Cc1nccn2c(C(N)=O)ccc12,true,9.337037,medium hard solved target
+n5_screen_28,CCN(c1cc(Cl)cc(C(=O)NCc2c(C)n(C)n(C)c2=O)c1C)[C@@H]1CC[C@@H](N(C)C)CC1,true,5.607500,medium hard solved target

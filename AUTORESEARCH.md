@@ -62,6 +62,11 @@ That default benchmark currently uses 15 fixed PaRoutes-derived targets, a
 per-target budget of `time_limit: 30` and `iteration_limit: 1000`, and a
 benchmark-level cap of `benchmark.max_wall_time: 600`.
 
+There is also a secondary hard benchmark in `data/benchmark_hard.yml` with 7
+persistent hard or slow targets. Use the main benchmark as the primary gate and
+the hard benchmark as a saturation check once the main benchmark starts to
+plateau.
+
 Example command:
 
 ```bash
@@ -88,6 +93,10 @@ commit	solved_fraction	median_first_solution_s	mean_search_s	status	description
 ```
 
 Use `status` values `keep`, `discard`, or `crash`.
+
+For publication tracking, keep a separate tracked log of accepted changes in
+`research/accepted_changes.tsv`. That log should contain only the kept
+algorithmic changes plus baseline rows for each benchmark tier.
 
 ## High-Value Experiments
 

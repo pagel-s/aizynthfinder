@@ -153,5 +153,8 @@ data/*.csv.gz
 data/*.hdf5
 benchmark_summary.json
 benchmark_details.json
+benchmark*_summary.json
+benchmark*_details.json
 run.log
+run_*.log
 results.tsv
