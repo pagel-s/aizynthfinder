@@ -81,6 +81,7 @@ class MctsNode:
         self._children_visitations: List[int] = []
         self._children_actions: List[RetroReaction] = []
         self._children: List[Optional[MctsNode]] = []
+        self._children_idx = {}
 
         self.blacklist = set(mol.inchi_key for mol in state.expandable_mols)
         if parent:
@@ -93,7 +94,7 @@ class MctsNode:
         self._logger = logger()
 
     def __getitem__(self, node: "MctsNode") -> StrDict:
-        idx = self._children.index(node)
+        idx = self._child_index(node)
         return {
             "action": self._children_actions[idx],
             "value": self._children_values[idx],
@@ -154,6 +155,9 @@ class MctsNode:
             else None
             for child in dict_["children"]
         ]
+        node._children_idx = {
+            id(child): idx for idx, child in enumerate(node._children) if child is not None
+        }
         return node
 
     @property
@@ -200,7 +204,7 @@ class MctsNode:
         :param child: the child node
         :param value_estimate: the value to add to the child value
         """
-        idx = self._children.index(child)
+        idx = self._child_index(child)
         self._children_visitations[idx] += 1
         self._children_values[idx] += value_estimate
 
@@ -222,6 +226,13 @@ class MctsNode:
             "visitations": list(self._children_visitations),
             "objects": list(self._children),
         }
+
+    def _child_index(self, child: "MctsNode") -> int:
+        idx = self._children_idx.get(id(child))
+        if idx is None:
+            idx = self._children.index(child)
+            self._children_idx[id(child)] = idx
+        return idx
 
     def expand(self) -> None:
         """
@@ -402,6 +413,7 @@ class MctsNode:
                     state=state, owner=self.tree, config=self._config, parent=self
                 )
                 self._children[child_idx] = new_node
+                self._children_idx[id(new_node)] = child_idx
                 new_nodes.append(new_node)
         return new_nodes
 
@@ -603,7 +615,7 @@ class ParetoMctsNode(MctsNode):
         :param child: the child node
         :param value_estimate: the value to add to the child value
         """
-        idx = self._children.index(child)
+        idx = self._child_index(child)
         self._children_visitations[idx] += 1
         # here we only update the cummulative rewards,
         #  _children_values are updated at selection time
