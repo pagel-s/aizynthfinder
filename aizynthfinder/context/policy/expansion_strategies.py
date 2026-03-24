@@ -282,7 +282,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         self.template_column: str = kwargs.get("template_column", "retro_template")
         self.cutoff_cumulative: float = float(kwargs.get("cutoff_cumulative", 0.991))
         self.cutoff_number: int = int(kwargs.get("cutoff_number", 55))
-        self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", False))
+        self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", True))
         self.use_remote_models: bool = bool(kwargs.get("use_remote_models", False))
         self.rescale_prior: bool = bool(kwargs.get("rescale_prior", True))
         self.chiral_fingerprints = bool(kwargs.get("chiral_fingerprints", False))
