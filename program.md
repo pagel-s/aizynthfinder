@@ -131,6 +131,12 @@ If two runs are effectively tied on these metrics, prefer the simpler change.
 Do not confuse activity with progress. Repeated tiny hyperparameter changes
 along the same line of attack are a failure mode, not a research strategy.
 
+Once the main benchmark is already solving most targets, treat progress on the
+persistent-unsolved and slow-solved targets as the most valuable kind of
+progress. Do not spend the default research budget shaving tiny amounts of time
+from already easy sub-second cases unless the same mechanism is likely to help
+the hard cases too.
+
 ## What You Can Change
 
 Anything that improves research progress under the fixed benchmark is fair game,
@@ -141,11 +147,15 @@ Examples:
 - MCTS selection behavior such as `C`, prior usage, grouping, reward handling
 - expansion width, branching control, and pruning logic
 - search depth handling and staged search schedules
+- transposition tables, duplicate detection, and state or subtree reuse
+- stall detection with rescue stages or fallback search behavior
 - reaction filtering and cycle pruning
 - multi-policy balancing, including RingBreaker combinations
 - Retro* versus MCTS, or hybrid search strategies
 - caching, batching, and child-instantiation efficiency
+- batched frontier expansion or filter evaluation across multiple nodes
 - route scoring that guides search more effectively
+- depth-aware, prior-aware, or target-aware progressive widening
 - benchmark instrumentation, profiling counters, and result summaries
 - small framework changes that let future experiments run faster or more safely
 
@@ -229,14 +239,30 @@ If a change is kept, append one row to `research/accepted_changes.tsv` with:
 
 This tracked log is part of the research artifact and should stay publication-friendly.
 
+## Plateau Strategy
+
+If the main benchmark is plateaued and the hard benchmark still has persistent
+unsolved targets, optimize for one of these outcomes:
+
+- solve one previously persistent-unsolved hard target
+- materially reduce search time on a hard target that is currently around `10s`
+  to `30s`
+- introduce a structural search improvement that is likely to transfer to both
+  benchmarks
+
+Do not treat a small speedup on already easy targets as sufficient evidence that
+the search algorithm is genuinely improving.
+
 ## Anti-Local-Optimum Rules
 
 Do not get stuck doing the same experiment in slightly different numbers.
 
 - Do not run long sequences of single-knob sweeps unless you have a very specific hypothesis.
 - If two consecutive experiments are just small variations of the same idea, the next one must be qualitatively different.
+- If three consecutive experiments fail to improve the benchmark, the next one must change control flow, search staging, data structures, or caching behavior rather than just retuning constants.
 - If a line of attack gives only weak or noisy gains, pivot to a different mechanism rather than continuing to micro-tune it.
 - Prefer experiments that change control flow, search structure, pruning behavior, caching, ranking, or state representation over experiments that only nudge constants.
+- Before each experiment, state which target cohort it is intended to help: persistent-unsolved, slow-solved, or broad average-case.
 - If you touch a hyperparameter, explain why that parameter matters mechanistically for this code path.
 - Treat repeated tiny `C`, `max_transforms`, or width-cutoff nudges as low-value unless they are attached to a broader algorithmic change.
 
@@ -273,9 +299,12 @@ Good directions now:
 - hybrid strategies that mix MCTS and Retro* style behavior
 - better expansion control than static width cutoffs, for example depth-aware or prior-aware branching
 - improved duplicate detection, state merging, or subtree reuse
+- explicit transposition-table style memoization for equivalent frontier states
+- stall detection that escalates from cheap search to more aggressive search on hard targets
 - better child selection logic than the current plain UCB-style scoring
 - targeted reaction filtering that removes low-value branches without hurting solved fraction
 - batching and caching changes that reduce repeated policy, filter, or reactant work
+- frontier-level batching so multiple promising nodes can be expanded or filtered together
 - route or state rewards that better correlate with actually reaching purchasable leaves
 - small structural additions to the benchmark harness that improve research speed, observability, or safety without changing evaluation semantics
 
