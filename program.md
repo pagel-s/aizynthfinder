@@ -111,6 +111,9 @@ Use the values from `benchmark_summary.json`.
 
 If two runs are effectively tied on these metrics, prefer the simpler change.
 
+Do not confuse activity with progress. Repeated tiny hyperparameter changes
+along the same line of attack are a failure mode, not a research strategy.
+
 ## What You Can Change
 
 Anything that improves research progress under the fixed benchmark is fair game,
@@ -128,6 +131,9 @@ Examples:
 - route scoring that guides search more effectively
 - benchmark instrumentation, profiling counters, and result summaries
 - small framework changes that let future experiments run faster or more safely
+
+Pure scalar hyperparameter changes are allowed, but they are not the default
+mode once the obvious baseline sweeps have been explored.
 
 ## What You Cannot Change
 
@@ -188,6 +194,17 @@ Then loop forever:
 9. If the new run is better, keep the commit and continue from there.
 10. If it is worse or tied without a compelling simplification win, revert to the previous best commit.
 
+## Anti-Local-Optimum Rules
+
+Do not get stuck doing the same experiment in slightly different numbers.
+
+- Do not run long sequences of single-knob sweeps unless you have a very specific hypothesis.
+- If two consecutive experiments are just small variations of the same idea, the next one must be qualitatively different.
+- If a line of attack gives only weak or noisy gains, pivot to a different mechanism rather than continuing to micro-tune it.
+- Prefer experiments that change control flow, search structure, pruning behavior, caching, ranking, or state representation over experiments that only nudge constants.
+- If you touch a hyperparameter, explain why that parameter matters mechanistically for this code path.
+- Treat repeated tiny `C`, `max_transforms`, or width-cutoff nudges as low-value unless they are attached to a broader algorithmic change.
+
 ## Timeout And Crashes
 
 The benchmark itself has a fixed `benchmark.max_wall_time: 600`, but model load
@@ -235,6 +252,15 @@ Lower-priority directions:
 
 Those may still help, but they are no longer the most interesting default moves
 once the obvious baseline tuning has already been explored.
+
+## Bad Default Behavior
+
+Avoid these patterns unless there is strong evidence for them:
+
+- changing one scalar by a small amount and calling that a research iteration
+- retrying the same failed idea with slightly different constants
+- spending many runs on local tuning before trying a qualitatively new mechanism
+- treating benchmark harness changes as progress when they do not improve research throughput or observability
 
 ## Autonomy
 
