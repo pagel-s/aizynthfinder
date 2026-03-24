@@ -370,7 +370,18 @@ class MctsNode:
         return True
 
     def _children_q(self) -> np.ndarray:
-        return np.array(self._children_values) / np.array(self._children_visitations)
+        child_values = np.array(self._children_values, dtype=float)
+        child_visitations = np.array(self._children_visitations, dtype=float)
+        if not self._algo_config["use_prior"]:
+            return child_values / child_visitations
+
+        child_priors = np.array(self._children_priors, dtype=float)
+        q_values = np.array(child_priors, copy=True)
+        visited_mask = child_visitations > 1
+        q_values[visited_mask] = (
+            child_values[visited_mask] - child_priors[visited_mask]
+        ) / (child_visitations[visited_mask] - 1)
+        return q_values
 
     def _children_u(self) -> np.ndarray:
         total_visits = np.log(np.sum(self._children_visitations))
