@@ -111,9 +111,11 @@ class _ReactionInterfaceMixin:
 
         :return: the SMILES
         """
-        reactants = ".".join(mol.smiles for mol in self._reactants_getter())  # type: ignore
-        products = ".".join(mol.smiles for mol in self._products_getter())  # type: ignore
-        return f"{reactants}>>{products}"
+        if getattr(self, "_reaction_smiles", None) is None:
+            reactants = ".".join(mol.smiles for mol in self._reactants_getter())  # type: ignore
+            products = ".".join(mol.smiles for mol in self._products_getter())  # type: ignore
+            self._reaction_smiles = f"{reactants}>>{products}"
+        return self._reaction_smiles
 
 
 class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
@@ -153,6 +155,7 @@ class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
         self.metadata: StrDict = metadata or {}
         self._reactants: Optional[Tuple[Tuple[TreeMolecule, ...], ...]] = None
         self._smiles: Optional[str] = None
+        self._reaction_smiles: Optional[str] = None
         self._kwargs: StrDict = kwargs
 
     @classmethod
@@ -222,6 +225,7 @@ class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
         )
         new_reaction._reactants = tuple(mol_list for mol_list in self._reactants or [])
         new_reaction._smiles = self._smiles
+        new_reaction._reaction_smiles = self._reaction_smiles
         return new_reaction
 
     def mapped_reaction_smiles(self) -> str:
