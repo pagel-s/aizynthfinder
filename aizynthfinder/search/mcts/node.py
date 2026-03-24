@@ -388,23 +388,6 @@ class MctsNode:
         child_visits = np.array(self._children_visitations)
         return self._algo_config["C"] * np.sqrt(2 * total_visits / child_visits)
 
-    def _active_child_indices(self) -> np.ndarray:
-        nchildren = len(self._children)
-        if nchildren <= 12:
-            return np.arange(nchildren)
-
-        total_visits = np.sum(self._children_visitations)
-        active_limit = max(8, int(2 * np.sqrt(total_visits)))
-        if active_limit >= nchildren:
-            return np.arange(nchildren)
-
-        prior_order = np.argsort(np.array(self._children_priors))[::-1]
-        active = prior_order[:active_limit]
-        instantiated = np.flatnonzero(
-            np.array([child is not None for child in self._children])
-        )
-        return np.unique(np.concatenate((active, instantiated)))
-
     def _create_children_nodes(
         self, states: List[MctsState], child_idx: int
     ) -> List["MctsNode"]:
@@ -566,12 +549,7 @@ class MctsNode:
         if not max(self._children_values) > 0:
             raise ValueError("Has no selectable children")
         scores = self._children_q() + self._children_u()
-        active_indices = self._active_child_indices()
-        active_scores = scores[active_indices]
-        if not len(active_scores) or active_scores.max() <= 0:
-            active_indices = np.where(np.array(self._children_values) > 0)[0]
-            active_scores = scores[active_indices]
-        indices = active_indices[np.where(active_scores == active_scores.max())[0]]
+        indices = np.where(scores == scores.max())[0]
         index = np.random.choice(indices)
         return self._select_child(index)
 
