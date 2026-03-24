@@ -372,7 +372,12 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         """
         if self.mask is not None:
             predictions[~self.mask] = 0
-        sortidx = np.argsort(predictions)[::-1]
+        top_k = min(max(self.cutoff_number, 1), len(predictions))
+        if top_k < len(predictions):
+            sortidx = np.argpartition(predictions, -top_k)[-top_k:]
+            sortidx = sortidx[np.argsort(predictions[sortidx])[::-1]]
+        else:
+            sortidx = np.argsort(predictions)[::-1]
         cumsum: np.ndarray = np.cumsum(predictions[sortidx])
         if any(cumsum >= self.cutoff_cumulative):
             maxidx = int(np.argmin(cumsum < self.cutoff_cumulative))
