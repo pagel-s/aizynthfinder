@@ -89,10 +89,12 @@ the last target opportunistically.
 Suggested TSV columns:
 
 ```text
-commit	solved_fraction	median_first_solution_s	mean_search_s	status	description
+commit	benchmark	solved_fraction	n_solved	median_first_solution_s	median_first_solution_iter	mean_search_s	benchmark_wall_s	status	description
 ```
 
 Use `status` values `keep`, `discard`, or `crash`.
+Write one row per benchmark actually executed, for example one `main15` row and
+one `hard10` row for the same commit if both were run.
 
 For publication tracking, keep a separate tracked log of accepted changes in
 `research/accepted_changes.tsv`. That log should contain only the kept

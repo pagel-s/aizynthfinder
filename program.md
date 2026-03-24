@@ -31,7 +31,7 @@ To set up a new experiment, work with the user to:
 4. **Verify the benchmark assets exist**: confirm that `data/config.yml` and the
    model, template, filter, and stock files it references are present.
 5. **Initialize `results.tsv`**: create it with only the header row. The baseline
-   will be written after the first run.
+   will be written after the first run, using one row per benchmark executed.
 6. **Confirm and start**: once setup looks good, begin experimentation.
 
 ## Fixed Evaluation Contract
@@ -191,12 +191,13 @@ every kept algorithmic change.
 
 ## Logging Results
 
-When an experiment finishes, append one row to `results.tsv`.
+When an experiment finishes, append one row to `results.tsv` for each benchmark
+that was executed.
 
 Use tab-separated columns with this header:
 
 ```text
-commit	solved_fraction	n_solved	median_first_solution_s	median_first_solution_iter	mean_search_s	benchmark_wall_s	status	description
+commit	benchmark	solved_fraction	n_solved	median_first_solution_s	median_first_solution_iter	mean_search_s	benchmark_wall_s	status	description
 ```
 
 Use:
@@ -204,6 +205,8 @@ Use:
 - `keep` if the experiment improves the benchmark and becomes the new base
 - `discard` if it does not improve the benchmark
 - `crash` if it fails to run or does not produce a valid summary
+
+Use `benchmark` values such as `main15` and `hard10`.
 
 Do not commit `results.tsv`.
 
@@ -222,7 +225,7 @@ Then loop forever:
 4. Run the fixed benchmark command and redirect output to `run.log`.
 5. If `benchmark_summary.json` is missing or invalid, inspect `tail -n 50 run.log`.
 6. If the failure is trivial and directly caused by the last edit, fix it and re-run once.
-7. Record the result in `results.tsv`.
+7. Record one row per benchmark run in `results.tsv`.
 8. Compare against the current best using the objective order above.
 9. If the new run is better, keep the commit and continue from there.
 10. If it is worse or tied without a compelling simplification win, revert to the previous best commit.
