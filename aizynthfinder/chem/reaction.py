@@ -284,6 +284,7 @@ class TemplatedRetroReaction(RetroReaction):
     """
 
     _required_kwargs = ["smarts"]
+    _rdkit_outcome_cache = {}
 
     def __init__(
         self,
@@ -366,6 +367,27 @@ class TemplatedRetroReaction(RetroReaction):
         return self._reactants
 
     def _apply_with_rdkit(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
+        cache_key = (self.mol.mapped_smiles, self.smarts)
+        cached_outcomes = self._rdkit_outcome_cache.get(cache_key)
+        if cached_outcomes is not None:
+            outcomes = []
+            for reactants in cached_outcomes:
+                try:
+                    mols = tuple(
+                        TreeMolecule(
+                            parent=self.mol,
+                            smiles=smiles,
+                            sanitize=True,
+                        )
+                        for smiles in reactants
+                    )
+                except MoleculeException:
+                    pass
+                else:
+                    outcomes.append(mols)
+            self._reactants = tuple(outcomes)
+            return self._reactants
+
         rxn = AllChem.ReactionFromSmarts(self.smarts)
         try:
             reactants_list = rxn.RunReactants([self.mol.mapped_mol])
@@ -391,6 +413,9 @@ class TemplatedRetroReaction(RetroReaction):
             else:
                 outcomes.append(mols)
         self._reactants = tuple(outcomes)
+        self._rdkit_outcome_cache[cache_key] = tuple(
+            tuple(mol.mapped_smiles for mol in reactants) for reactants in self._reactants
+        )
 
         return self._reactants
 
