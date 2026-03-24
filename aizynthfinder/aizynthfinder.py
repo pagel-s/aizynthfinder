@@ -213,6 +213,7 @@ class AiZynthFinder:
         original_max_transforms = self.config.search.max_transforms
         depth_rescue_activated = False
         single_precursor_rescue_activated = False
+        single_precursor_rescue_recheck_interval = 50
 
         time0 = time.time()
         i = 1
@@ -238,7 +239,8 @@ class AiZynthFinder:
                     depth_rescue_activated
                     and not single_precursor_rescue_activated
                     and "first_solution_time" not in self.search_stats
-                    and i == 501
+                    and i >= 501
+                    and (i - 501) % single_precursor_rescue_recheck_interval == 0
                     and self._has_depth_limited_single_precursor_state(
                         self.config.search.max_transforms
                     )
