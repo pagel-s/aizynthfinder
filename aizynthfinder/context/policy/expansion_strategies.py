@@ -369,7 +369,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         sortidx = np.argsort(predictions)[::-1]
         cumsum: np.ndarray = np.cumsum(predictions[sortidx])
         if any(cumsum >= self.cutoff_cumulative):
-            maxidx = int(np.argmin(cumsum < self.cutoff_cumulative)) + 1
+            maxidx = int(np.argmin(cumsum < self.cutoff_cumulative))
         else:
             maxidx = len(cumsum)
         maxidx = min(maxidx, self.cutoff_number) or 1
