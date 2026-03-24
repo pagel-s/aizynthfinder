@@ -358,19 +358,6 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
                         use_rdchiral=self.use_rdchiral,
                     )
                 )
-
-            if (
-                self.key == "uspto"
-                and mol.transform == 0
-                and mol.rd_mol.GetRingInfo().NumRings() > 0
-                and "ringbreaker" in self._config.expansion_policy.items
-            ):
-                ringbreaker_actions, ringbreaker_priors = self._config.expansion_policy[
-                    "ringbreaker"
-                ].get_actions([mol])
-                supplement = min(10, len(ringbreaker_actions))
-                possible_actions.extend(ringbreaker_actions[:supplement])
-                priors.extend(ringbreaker_priors[:supplement])
         return possible_actions, priors  # type: ignore
 
     def reset_cache(self) -> None:
