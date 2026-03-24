@@ -358,9 +358,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         """Reset the prediction cache"""
         self._cache = {}
 
-    def _cutoff_predictions(
-        self, predictions: np.ndarray, cutoff_number: Optional[int] = None
-    ) -> np.ndarray:
+    def _cutoff_predictions(self, predictions: np.ndarray) -> np.ndarray:
         """
         Get the top transformations, by selecting those that have:
             * cumulative probability less than a threshold (cutoff_cumulative)
@@ -374,13 +372,8 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
             maxidx = int(np.argmin(cumsum < self.cutoff_cumulative))
         else:
             maxidx = len(cumsum)
-        maxidx = min(maxidx, cutoff_number or self.cutoff_number) or 1
+        maxidx = min(maxidx, self.cutoff_number) or 1
         return sortidx[:maxidx]
-
-    def _effective_cutoff_number(self, molecule: TreeMolecule) -> int:
-        if molecule.transform <= 1:
-            return self.cutoff_number
-        return max(35, self.cutoff_number - 5 * (molecule.transform - 1))
 
     def _load_mask_file(self, maskfile: str) -> np.ndarray:
         self._logger.info(f"Loading masking of templates from {maskfile} to {self.key}")
@@ -406,13 +399,8 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
             return
 
         pred_list = np.asarray(self.model.predict(np.vstack(fp_list)))
-        uncached_molecules = [
-            mol for mol in molecules if mol.inchi_key in pred_inchis
-        ]
-        for molecule, pred, inchi in zip(uncached_molecules, pred_list, pred_inchis):
-            probable_transforms_idx = self._cutoff_predictions(
-                pred, cutoff_number=self._effective_cutoff_number(molecule)
-            )
+        for pred, inchi in zip(pred_list, pred_inchis):
+            probable_transforms_idx = self._cutoff_predictions(pred)
             self._cache[inchi] = (
                 probable_transforms_idx,
                 pred[probable_transforms_idx],
