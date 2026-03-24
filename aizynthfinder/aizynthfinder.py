@@ -211,6 +211,7 @@ class AiZynthFinder:
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
         original_max_transforms = self.config.search.max_transforms
+        original_cutoff_numbers = self._selected_expansion_cutoff_numbers()
         depth_rescue_activated = False
 
         time0 = time.time()
@@ -232,6 +233,12 @@ class AiZynthFinder:
                     and i == 251
                 ):
                     self.config.search.max_transforms = original_max_transforms + 1
+                    self._set_expansion_cutoff_numbers(
+                        {
+                            name: cutoff_number + 5
+                            for name, cutoff_number in original_cutoff_numbers.items()
+                        }
+                    )
                     depth_rescue_activated = True
                 if show_progress:
                     pbar.update(1)
@@ -257,6 +264,7 @@ class AiZynthFinder:
                 pbar.close()
             if depth_rescue_activated:
                 self.config.search.max_transforms = original_max_transforms
+                self._set_expansion_cutoff_numbers(original_cutoff_numbers)
 
         time_past = time.time() - time0
         self._logger.debug("Search completed")
@@ -269,6 +277,21 @@ class AiZynthFinder:
             return
         random.seed(seed)
         np.random.seed(seed)
+
+    def _selected_expansion_cutoff_numbers(self) -> dict:
+        if not self.expansion_policy.selection:
+            return {}
+        cutoff_numbers = {}
+        for name in self.expansion_policy.selection:
+            policy = self.expansion_policy[name]
+            cutoff_number = getattr(policy, "cutoff_number", None)
+            if cutoff_number is not None:
+                cutoff_numbers[name] = cutoff_number
+        return cutoff_numbers
+
+    def _set_expansion_cutoff_numbers(self, cutoff_numbers: dict) -> None:
+        for name, cutoff_number in cutoff_numbers.items():
+            self.expansion_policy[name].cutoff_number = cutoff_number
 
     def _setup_focussed_bonds(self, target_mol: Molecule) -> None:
         """
