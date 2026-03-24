@@ -450,9 +450,6 @@ class MctsNode:
             )
             return True
 
-        if reaction.mol.transform == 0:
-            return False
-
         if not self._filter_policy.selection:
             return False
         try:
