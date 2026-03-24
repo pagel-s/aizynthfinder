@@ -121,6 +121,10 @@ This command:
 Do not manually append `results.tsv` rows during the current phase unless the
 human explicitly asks you to repair old data.
 
+Do not use `aizynth_autoresearch` directly for normal experiments. That command
+is only the low-level single-spec runner and now requires explicit standalone
+opt-in. If you create a lone `main15` row, you used the wrong command.
+
 ## Objective
 
 `hard10` is judged in this exact order:
@@ -233,6 +237,9 @@ partial verdict.
 For a commit that runs both benchmarks, always write the `hard10` row first and
 the `main15` row second. Do not log a `main15` row without a corresponding
 `hard10` row for the same commit in this research phase.
+
+If you ever see a lone `main15` row for a new experiment in this phase, treat
+that result as invalid and rerun the experiment with the paired driver.
 
 Do not commit `results.tsv`. Do not hand-edit it during normal experiment runs.
 

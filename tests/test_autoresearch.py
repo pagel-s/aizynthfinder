@@ -94,7 +94,7 @@ def test_autoresearch_main(add_cli_arguments, mocker, tmpdir):
     factory = mocker.Mock(side_effect=lambda configfile: _DummyFinder(configfile, stats))
     mocker.patch("aizynthfinder.tools.autoresearch.AiZynthFinder", factory)
     add_cli_arguments(
-        f"--spec {spec_file} --output {summary_file} --details-output {details_file}"
+        f"--allow-standalone --spec {spec_file} --output {summary_file} --details-output {details_file}"
     )
 
     autoresearch_main()
@@ -171,7 +171,7 @@ def test_autoresearch_stops_before_exceeding_benchmark_wall_time(
         side_effect=[0.0, 0.0, 35.0, 35.0, 35.5],
     )
     add_cli_arguments(
-        f"--spec {spec_file} --output {summary_file} --details-output {details_file}"
+        f"--allow-standalone --spec {spec_file} --output {summary_file} --details-output {details_file}"
     )
 
     autoresearch_main()
@@ -190,3 +190,29 @@ def test_autoresearch_stops_before_exceeding_benchmark_wall_time(
 
     details = pd.read_json(details_file, orient="table")
     assert list(details["smiles"]) == ["c1ccccc1"]
+
+
+def test_autoresearch_main_requires_explicit_standalone_opt_in(
+    add_cli_arguments, tmpdir
+):
+    spec_file = tmpdir / "spec.yml"
+    spec_file.write(
+        "\n".join(
+            [
+                "config: config.yml",
+                "benchmark:",
+                "  smiles: benchmark.smi",
+                "search:",
+                "  time_limit: 30",
+                "  iteration_limit: 100",
+            ]
+        )
+    )
+    add_cli_arguments(f"--spec {spec_file}")
+
+    try:
+        autoresearch_main()
+    except SystemExit as err:
+        assert "aizynth_autoresearch is the low-level single-spec runner" in str(err)
+    else:
+        raise AssertionError("expected SystemExit when standalone opt-in is missing")

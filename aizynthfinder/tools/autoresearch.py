@@ -75,6 +75,15 @@ class BenchmarkSpec:
 def _get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser("aizynth_autoresearch")
     parser.add_argument(
+        "--allow-standalone",
+        action="store_true",
+        default=False,
+        help=(
+            "allow direct use of the low-level single-spec runner; "
+            "for normal autoresearch experiments use aizynth_autoresearch_driver"
+        ),
+    )
+    parser.add_argument(
         "--spec", required=True, help="the benchmark specification yaml file"
     )
     parser.add_argument(
@@ -325,6 +334,14 @@ def run_benchmark_from_spec(
 def main() -> None:
     """Entry point for the aizynth_autoresearch command."""
     args = _get_arguments()
+    if not args.allow_standalone:
+        raise SystemExit(
+            "aizynth_autoresearch is the low-level single-spec runner. "
+            "For normal autoresearch experiments use "
+            "'aizynth_autoresearch_driver --description ...'. "
+            "If you intentionally want to run one benchmark spec directly, "
+            "re-run with --allow-standalone."
+        )
     run_benchmark_from_spec(
         spec_filename=args.spec,
         output_filename=args.output,

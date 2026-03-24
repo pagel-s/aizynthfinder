@@ -72,6 +72,9 @@ Example command:
 aizynth_autoresearch_driver --description "example experiment"
 ```
 
+Do not use `aizynth_autoresearch` directly for normal experiments. It is only
+the low-level single-spec runner and requires explicit standalone opt-in.
+
 For each experiment:
 
 1. make one bounded code or config change
@@ -94,6 +97,8 @@ commit	benchmark	solved_fraction	n_solved	median_first_solution_s	median_first_s
 Use `status` values `keep`, `discard`, or `crash`.
 Write one row per benchmark actually executed, for example one `main15` row and
 one `hard10` row for the same commit if both were run.
+Any lone `main15` row for a new hard-first-phase experiment should be treated
+as invalid and rerun with the paired driver.
 
 For publication tracking, keep a separate tracked log of accepted changes in
 `research/accepted_changes.tsv`. That log should contain only the kept
