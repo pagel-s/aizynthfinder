@@ -550,18 +550,6 @@ class MctsNode:
             raise ValueError("Has no selectable children")
         scores = self._children_q() + self._children_u()
         indices = np.where(scores == scores.max())[0]
-        if len(indices) > 1:
-            tiebreak_scores = []
-            for idx in indices:
-                child = self._children[idx]
-                if child is not None and self.tree:
-                    child_reward = self.tree.compute_reward(child)
-                    if isinstance(child_reward, (float, int, np.floating)):
-                        tiebreak_scores.append(float(child_reward))
-                        continue
-                tiebreak_scores.append(self._children_priors[idx])
-            tiebreak_scores = np.asarray(tiebreak_scores)
-            indices = indices[np.where(tiebreak_scores == tiebreak_scores.max())[0]]
         index = np.random.choice(indices)
         return self._select_child(index)
 
