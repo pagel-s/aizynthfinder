@@ -210,6 +210,8 @@ class AiZynthFinder:
         assert self.tree is not None
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
+        original_max_transforms = self.config.search.max_transforms
+        depth_rescue_activated = False
 
         time0 = time.time()
         i = 1
@@ -219,32 +221,43 @@ class AiZynthFinder:
         if show_progress:
             pbar = tqdm(total=self.config.search.iteration_limit, leave=False)
 
-        while (
-            time_past < self.config.search.time_limit
-            and i <= self.config.search.iteration_limit
-        ):
+        try:
+            while (
+                time_past < self.config.search.time_limit
+                and i <= self.config.search.iteration_limit
+            ):
+                if (
+                    not depth_rescue_activated
+                    and "first_solution_time" not in self.search_stats
+                    and i == 251
+                ):
+                    self.config.search.max_transforms = original_max_transforms + 1
+                    depth_rescue_activated = True
+                if show_progress:
+                    pbar.update(1)
+                self.search_stats["iterations"] += 1
+
+                try:
+                    is_solved = self.tree.one_iteration()
+                except StopIteration:
+                    break
+
+                if is_solved and "first_solution_time" not in self.search_stats:
+                    self.search_stats["first_solution_time"] = time.time() - time0
+                    self.search_stats["first_solution_iteration"] = i
+
+                if self.config.search.return_first and is_solved:
+                    self._logger.debug("Found first solved route")
+                    self.search_stats["returned_first"] = True
+                    break
+                i = i + 1
+                time_past = time.time() - time0
+        finally:
             if show_progress:
-                pbar.update(1)
-            self.search_stats["iterations"] += 1
+                pbar.close()
+            if depth_rescue_activated:
+                self.config.search.max_transforms = original_max_transforms
 
-            try:
-                is_solved = self.tree.one_iteration()
-            except StopIteration:
-                break
-
-            if is_solved and "first_solution_time" not in self.search_stats:
-                self.search_stats["first_solution_time"] = time.time() - time0
-                self.search_stats["first_solution_iteration"] = i
-
-            if self.config.search.return_first and is_solved:
-                self._logger.debug("Found first solved route")
-                self.search_stats["returned_first"] = True
-                break
-            i = i + 1
-            time_past = time.time() - time0
-
-        if show_progress:
-            pbar.close()
         time_past = time.time() - time0
         self._logger.debug("Search completed")
         self.search_stats["time"] = time_past
