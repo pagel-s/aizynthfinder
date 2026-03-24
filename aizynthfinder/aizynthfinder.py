@@ -210,7 +210,6 @@ class AiZynthFinder:
         assert self.tree is not None
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
-        rescue_selection = None
 
         time0 = time.time()
         i = 1
@@ -220,42 +219,29 @@ class AiZynthFinder:
         if show_progress:
             pbar = tqdm(total=self.config.search.iteration_limit, leave=False)
 
-        try:
-            while (
-                time_past < self.config.search.time_limit
-                and i <= self.config.search.iteration_limit
-            ):
-                if (
-                    rescue_selection is None
-                    and "first_solution_time" not in self.search_stats
-                    and (
-                        time_past >= self.config.search.time_limit / 3
-                        or i >= max(self.config.search.iteration_limit // 3, 1)
-                    )
-                ):
-                    rescue_selection = self._activate_ringbreaker_rescue()
+        while (
+            time_past < self.config.search.time_limit
+            and i <= self.config.search.iteration_limit
+        ):
+            if show_progress:
+                pbar.update(1)
+            self.search_stats["iterations"] += 1
 
-                if show_progress:
-                    pbar.update(1)
-                self.search_stats["iterations"] += 1
+            try:
+                is_solved = self.tree.one_iteration()
+            except StopIteration:
+                break
 
-                try:
-                    is_solved = self.tree.one_iteration()
-                except StopIteration:
-                    break
+            if is_solved and "first_solution_time" not in self.search_stats:
+                self.search_stats["first_solution_time"] = time.time() - time0
+                self.search_stats["first_solution_iteration"] = i
 
-                if is_solved and "first_solution_time" not in self.search_stats:
-                    self.search_stats["first_solution_time"] = time.time() - time0
-                    self.search_stats["first_solution_iteration"] = i
-
-                if self.config.search.return_first and is_solved:
-                    self._logger.debug("Found first solved route")
-                    self.search_stats["returned_first"] = True
-                    break
-                i = i + 1
-                time_past = time.time() - time0
-        finally:
-            self._restore_ringbreaker_rescue(rescue_selection)
+            if self.config.search.return_first and is_solved:
+                self._logger.debug("Found first solved route")
+                self.search_stats["returned_first"] = True
+                break
+            i = i + 1
+            time_past = time.time() - time0
 
         if show_progress:
             pbar.close()
@@ -263,30 +249,6 @@ class AiZynthFinder:
         self._logger.debug("Search completed")
         self.search_stats["time"] = time_past
         return time_past
-
-    def _activate_ringbreaker_rescue(self) -> Optional[List[str]]:
-        if (
-            self.target_mol is None
-            or self.target_mol.rd_mol.GetRingInfo().NumRings() == 0
-            or "ringbreaker" not in self.expansion_policy.items
-        ):
-            return None
-
-        original_selection = list(self.expansion_policy.selection or [])
-        if "ringbreaker" in original_selection:
-            return None
-
-        self.expansion_policy.select(original_selection + ["ringbreaker"])
-        self._logger.debug("Activated ringbreaker stall rescue")
-        self.search_stats["ringbreaker_rescue"] = True
-        return original_selection
-
-    def _restore_ringbreaker_rescue(
-        self, rescue_selection: Optional[List[str]]
-    ) -> None:
-        if rescue_selection is None:
-            return
-        self.expansion_policy.select(rescue_selection)
 
     def _set_random_seed(self) -> None:
         seed = self.config.search.random_seed
