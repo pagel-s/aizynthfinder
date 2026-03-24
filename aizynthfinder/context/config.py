@@ -46,6 +46,7 @@ class _SearchConfiguration:
     max_transforms: int = 6
     iteration_limit: int = 100
     time_limit: int = 120
+    random_seed: Optional[int] = None
     return_first: bool = False
     exclude_target_from_stock: bool = True
     break_bonds: List[List[int]] = field(default_factory=list)

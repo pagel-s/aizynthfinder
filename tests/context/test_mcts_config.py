@@ -34,6 +34,7 @@ def test_load_from_file(write_yaml):
                 },
                 "max_transforms": 6,
                 "time_limit": 200,
+                "random_seed": 123,
                 "break_bonds": [[1, 2], [3, 4]],
                 "break_bonds_operator": "OR",
             },
@@ -44,6 +45,7 @@ def test_load_from_file(write_yaml):
 
     assert config.search.algorithm == "mcts"
     assert config.search.time_limit == 200
+    assert config.search.random_seed == 123
     assert config.search.break_bonds == [[1, 2], [3, 4]]
     assert config.search.break_bonds_operator == "OR"
 
@@ -72,6 +74,7 @@ def test_update_search(default_config):
 
     assert config.search.algorithm_config["C"] != 2.0
     assert config.search.time_limit != 300
+    assert config.search.random_seed is None
     assert config.search.max_transforms == 6
     assert config.search.break_bonds != [[1, 2], [3, 4]]
     assert config.search.freeze_bonds != [[2, 3]]
@@ -82,6 +85,7 @@ def test_update_search(default_config):
             "search": {
                 "algorithm_config": {"C": 2.0},
                 "time_limit": 300,
+                "random_seed": 321,
                 "max_transforms": None,
                 "break_bonds": [[1, 2], [3, 4]],
                 "freeze_bonds": [[2, 3]],
@@ -91,6 +95,7 @@ def test_update_search(default_config):
     )
     assert config.search.algorithm_config["C"] == 2.0
     assert config.search.time_limit == 300
+    assert config.search.random_seed == 321
     assert config.search.max_transforms == 6
     assert config.search.break_bonds == [[1, 2], [3, 4]]
     assert config.search.freeze_bonds == [[2, 3]]

@@ -77,6 +77,7 @@ tf = ["tensorflow", "grpcio", "tensorflow-serving-api"]
 [tool.poetry.scripts]
 aizynthapp = "aizynthfinder.interfaces.aizynthapp:main"
 aizynthcli = "aizynthfinder.interfaces.aizynthcli:main"
+aizynth_autoresearch = "aizynthfinder.tools.autoresearch:main"
 cat_aizynth_output = "aizynthfinder.tools.cat_output:main"
 download_public_data = "aizynthfinder.tools.download_public_data:main"
 smiles2stock = "aizynthfinder.tools.make_stock:main"

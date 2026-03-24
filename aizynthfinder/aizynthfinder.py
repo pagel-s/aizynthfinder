@@ -2,10 +2,12 @@
 """
 from __future__ import annotations
 
+import random
 import time
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+import numpy as np
 from tqdm import tqdm
 
 from aizynthfinder.analysis import (
@@ -209,6 +211,7 @@ class AiZynthFinder:
         # This is for type checking, prepare_tree is creating it.
         assert self.tree is not None
         self.search_stats = {"returned_first": False, "iterations": 0}
+        self._set_random_seed()
 
         time0 = time.time()
         i = 1
@@ -248,6 +251,13 @@ class AiZynthFinder:
         self._logger.debug("Search completed")
         self.search_stats["time"] = time_past
         return time_past
+
+    def _set_random_seed(self) -> None:
+        seed = self.config.search.random_seed
+        if seed is None:
+            return
+        random.seed(seed)
+        np.random.seed(seed)
 
     def _setup_focussed_bonds(self, target_mol: Molecule) -> None:
         """

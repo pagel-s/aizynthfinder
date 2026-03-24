@@ -1,0 +1,15 @@
+config: ../data/config.yml
+benchmark:
+  smiles: ../data/benchmark.smi
+  max_wall_time: 600
+policy:
+  - uspto
+filter:
+  - uspto
+stocks:
+  - zinc
+search:
+  time_limit: 30
+  iteration_limit: 1000
+  return_first: true
+  random_seed: 1337

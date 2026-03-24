@@ -49,6 +49,7 @@ A more detailed configuration file is shown below
       iteration_limit: 100
       return_first: false
       time_limit: 120
+      random_seed: 1337
       exclude_target_from_stock: True 
       break_bonds: [[1, 2], [2, 3]]
       freeze_bonds: [[3, 4]]
@@ -140,6 +141,7 @@ algorithm_config: mcts_grouping              -              if is partial or ful
 max_transforms                               6              The maximum depth of the search tree.
 iteration_limit                              100            The maximum number of iterations for the tree search.
 time_limit                                   120            The maximum number of seconds to complete the tree search.
+random_seed                                  -              If set, seeds both ``random`` and ``numpy.random`` at the start of each search for reproducible runs.
 return_first                                 False          If True, the tree search will be terminated as soon as one solution is found.
 exclude_target_from_stock                    True           If True, the target is in stock will be broken down.
 break_bonds                                  []             The list of lists of atom numbers of molecular bonds pairs to break during the search. 

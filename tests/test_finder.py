@@ -40,6 +40,28 @@ def test_dead_end_expansion(setup_aizynthfinder):
     assert nodes[0].created_at_iteration == 0
 
 
+def test_tree_search_sets_random_seed(setup_aizynthfinder, mocker):
+    root_smi = "CN1CCC(C(=O)c2cccc(NC(=O)c3ccc(F)cc3)c2F)CC1"
+    child1_smi = ["CN1CCC(Cl)CC1", "N#Cc1cccc(NC(=O)c2ccc(F)cc2)c1F", "O"]
+    child2_smi = ["CN1CCC(Br)CC1", "N#Cc1cccc(NC(=O)c2ccc(F)cc2)c1F", "O"]
+    lookup = {
+        root_smi: [
+            {"smiles": ".".join(child1_smi), "prior": 0.5},
+            {"smiles": ".".join(child2_smi), "prior": 0.5},
+        ]
+    }
+    finder = setup_aizynthfinder(lookup, child1_smi + child2_smi)
+    finder.config.search.random_seed = 7
+    finder.config.search.iteration_limit = 1
+    random_seed = mocker.patch("aizynthfinder.aizynthfinder.random.seed")
+    numpy_seed = mocker.patch("aizynthfinder.aizynthfinder.np.random.seed")
+
+    finder.tree_search()
+
+    random_seed.assert_called_once_with(7)
+    numpy_seed.assert_called_once_with(7)
+
+
 def test_freeze_bond_not_in_target_mol(setup_aizynthfinder):
     root_smi = "CN1CCC(C(=O)c2cccc([NH:1][C:2](=O)c3ccc(F)cc3)c2F)CC1"
     lookup = {root_smi: []}
