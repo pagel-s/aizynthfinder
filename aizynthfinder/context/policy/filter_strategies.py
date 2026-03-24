@@ -118,6 +118,7 @@ class QuickKerasFilter(FilterStrategy):
         self._rxn_fp_name = kwargs.get("rxn_fp_name", "input_2")
         self._exclude_from_policy: List[str] = kwargs.get("exclude_from_policy", [])
         self.filter_cutoff: float = float(kwargs.get("filter_cutoff", 0.05))
+        self._cache: Dict[str, float] = {}
 
     def apply(self, reaction: RetroReaction) -> None:
         if reaction.metadata.get("policy_name", "") in self._exclude_from_policy:
@@ -143,9 +144,17 @@ class QuickKerasFilter(FilterStrategy):
         return feasible, prob
 
     def _predict(self, reaction: RetroReaction) -> float:
+        cache_key = reaction.reaction_smiles()
+        if cache_key in self._cache:
+            return self._cache[cache_key]
         prod_fp, rxn_fp = self._reaction_to_fingerprint(reaction, self.model)
         kwargs = {self._prod_fp_name: prod_fp, self._rxn_fp_name: rxn_fp}
-        return self.model.predict(prod_fp, rxn_fp, **kwargs)[0][0]
+        prob = self.model.predict(prod_fp, rxn_fp, **kwargs)[0][0]
+        self._cache[cache_key] = prob
+        return prob
+
+    def reset_cache(self) -> None:
+        self._cache = {}
 
     @staticmethod
     def _reaction_to_fingerprint(
