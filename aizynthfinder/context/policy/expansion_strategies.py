@@ -337,8 +337,6 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
 
         for mol in molecules:
             probable_transforms_idx, probs = self._cache[mol.inchi_key]
-            if self.rescale_prior:
-                probs /= probs.sum()
             priors.extend(probs)
             for idx, template_idx in enumerate(probable_transforms_idx):
                 move_index, template, base_metadata = self._template_records[
@@ -407,9 +405,12 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         pred_list = np.asarray(self.model.predict(np.vstack(fp_list)))
         for pred, inchi in zip(pred_list, pred_inchis):
             probable_transforms_idx = self._cutoff_predictions(pred)
+            probs = pred[probable_transforms_idx]
+            if self.rescale_prior:
+                probs = probs / probs.sum()
             self._cache[inchi] = (
                 probable_transforms_idx,
-                pred[probable_transforms_idx],
+                probs,
             )
 
 
