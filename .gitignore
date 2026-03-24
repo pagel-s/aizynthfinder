@@ -144,3 +144,14 @@ coverage/
 smiles.txt
 config_local.yml
 devtools/seldon-output-*/
+
+# Local autoresearch assets and outputs
+data/config.yml
+data/n5-targets.txt
+data/*.onnx
+data/*.csv.gz
+data/*.hdf5
+benchmark_summary.json
+benchmark_details.json
+run.log
+results.tsv
