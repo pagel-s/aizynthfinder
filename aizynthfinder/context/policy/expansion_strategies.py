@@ -284,7 +284,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         self.cutoff_number: int = int(kwargs.get("cutoff_number", 50))
         self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", True))
         self.use_remote_models: bool = bool(kwargs.get("use_remote_models", False))
-        self.rescale_prior: bool = bool(kwargs.get("rescale_prior", False))
+        self.rescale_prior: bool = bool(kwargs.get("rescale_prior", True))
         self.chiral_fingerprints = bool(kwargs.get("chiral_fingerprints", False))
 
         self._logger.info(
