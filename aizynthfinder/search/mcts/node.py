@@ -82,6 +82,7 @@ class MctsNode:
         self._children_actions: List[RetroReaction] = []
         self._children: List[Optional[MctsNode]] = []
         self._children_idx = {}
+        self._instantiated_children: List[MctsNode] = []
 
         self.blacklist = set(mol.inchi_key for mol in state.expandable_mols)
         if parent:
@@ -158,6 +159,7 @@ class MctsNode:
         node._children_idx = {
             id(child): idx for idx, child in enumerate(node._children) if child is not None
         }
+        node._instantiated_children = [child for child in node._children if child]
         return node
 
     @property
@@ -167,7 +169,7 @@ class MctsNode:
 
         :return: the children
         """
-        return [child for child in self._children if child]
+        return list(self._instantiated_children)
 
     @property
     def is_solved(self) -> bool:
@@ -414,6 +416,7 @@ class MctsNode:
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
+                self._instantiated_children.append(new_node)
                 new_nodes.append(new_node)
         return new_nodes
 
@@ -437,6 +440,8 @@ class MctsNode:
         nactions = len(actions)
         self._children_visitations = [1] * nactions
         self._children = [None] * nactions
+        self._children_idx = {}
+        self._instantiated_children = []
         if self._algo_config["use_prior"]:
             self._children_values = list(self._children_priors)
         else:
