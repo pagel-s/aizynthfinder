@@ -155,6 +155,38 @@ def test_get_actions_two_policies(default_config, setup_template_expansion_polic
     assert priors == [0.7, 0.7]
 
 
+def test_get_actions_two_policies_deduplicates_identical_templates(
+    default_config, setup_template_expansion_policy
+):
+    smarts = [
+        "([C:1]-[O:2])>>([C:1]-Br).[O:2]",
+        "([C:1]-[N:2])>>([C:1]-Cl).[N:2]",
+        "([C:1]-[C:2])>>([C:1]-I).[C:2]",
+    ]
+    expansion_policy = default_config.expansion_policy
+    strategy1, _ = setup_template_expansion_policy("policy1", templates=smarts)
+    expansion_policy.load(strategy1)
+    strategy2, _ = setup_template_expansion_policy("policy2", templates=smarts)
+    expansion_policy.load(strategy2)
+    expansion_policy.select(["policy1", "policy2"])
+    mols = [TreeMolecule(smiles="CCO", parent=None)]
+
+    actions, priors = expansion_policy.get_actions(mols)
+
+    assert len(actions) == 2
+    assert [round(prior, 4) for prior in priors] == [0.7778, 0.2222]
+    assert actions[0].metadata["policy_name"] == "policy1"
+    assert actions[0].metadata["additional_actions"] == [
+        {
+            "policy_probability": 0.7778,
+            "policy_probability_rank": 0,
+            "policy_name": "policy2",
+            "template_code": actions[0].metadata["template_code"],
+            "template": actions[0].metadata["template"],
+        }
+    ]
+
+
 def test_get_actions_using_rdkit(
     default_config, setup_template_expansion_policy, mocker
 ):
