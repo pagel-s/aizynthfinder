@@ -120,6 +120,24 @@ def test_promising_child_with_filter_reject(setup_mcts_search):
     assert view["values"] == [-1000000.0, 0.5, 0.3]
 
 
+def test_select_child_prefers_best_instantiated_outcome(
+    default_config, generate_root, setup_stock, monkeypatch
+):
+    setup_stock(default_config, "O")
+    root = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1", default_config)
+    low_score_child = generate_root("CCCCBr", default_config)
+    high_score_child = generate_root("O", default_config)
+    root._children = [None]
+
+    monkeypatch.setattr(
+        root, "_instantiate_child", lambda child_idx: [low_score_child, high_score_child]
+    )
+
+    selected = root._select_child(0)
+
+    assert selected is high_score_child
+
+
 def test_backpropagate(setup_mcts_search):
     root, _, _ = setup_mcts_search
     root.expand()

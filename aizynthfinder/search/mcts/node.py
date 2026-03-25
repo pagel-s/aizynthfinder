@@ -568,15 +568,31 @@ class MctsNode:
         Selecting a child node implies instantiating the children nodes.
 
         If the child has already been instantiated, return immediately
-        Otherwise, select a random node of the feasible ones to return
+        Otherwise, select the best feasible node to return
         """
         if self._children[child_idx]:
             return self._children[child_idx]
 
         new_nodes = self._instantiate_child(child_idx)
         if new_nodes:
-            return random.choice(new_nodes)
+            return self._select_instantiated_child(new_nodes)
         return None
+
+    def _select_instantiated_child(self, new_nodes: List["MctsNode"]) -> "MctsNode":
+        if len(new_nodes) == 1:
+            return new_nodes[0]
+
+        search_rewards = self._algo_config["search_rewards"]
+        if len(search_rewards) != 1:
+            return random.choice(new_nodes)
+
+        scorer = self._config.scorers[search_rewards[0]]
+        scores = [scorer(node) for node in new_nodes]
+        if any(not np.isscalar(score) for score in scores):
+            return random.choice(new_nodes)
+
+        best_index = int(np.argmax(np.asarray(scores, dtype=float)))
+        return new_nodes[best_index]
 
     def _serialize_stats_list(self, name: str) -> List[float]:
         return [float(value) for value in getattr(self, name)]
