@@ -402,6 +402,11 @@ class MctsNode:
                     self._disable_child(child_idx)
                 continue
 
+            if self._generated_tree_degeneracy(state):
+                if state_index == 0:
+                    self._disable_child(child_idx)
+                continue
+
             # If there's more than one outcome, the lists need be expanded
             if state_index > 0:
                 child_idx = self._expand_children_lists(first_child_idx, state_index)
@@ -502,6 +507,11 @@ class MctsNode:
             previous_action.metadata["additional_actions"] = []
         previous_action.metadata["additional_actions"].append(metadata_copy)
         return True
+
+    def _generated_tree_degeneracy(self, new_state: MctsState) -> bool:
+        if self._degeneracy_check not in ["partial", "full"] or not self.tree:
+            return False
+        return not self.tree.register_state(new_state, self._degeneracy_check)
 
     def _instantiate_child(self, child_idx: int) -> List["MctsNode"]:
         """
