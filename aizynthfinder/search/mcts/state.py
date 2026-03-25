@@ -42,6 +42,7 @@ class MctsState:
 
     def __init__(self, mols: Sequence[TreeMolecule], config: Configuration) -> None:
         self.mols = mols
+        self._config = config
         self.stock = config.stock
         self.in_stock_list = [mol in self.stock for mol in self.mols]
         self.expandable_mols = [
@@ -50,15 +51,18 @@ class MctsState:
         self._stock_availability: Optional[List[str]] = None
         self.is_solved = all(self.in_stock_list)
         self.max_transforms = max(mol.transform for mol in self.mols)
-        self.is_terminal = (
-            self.max_transforms >= config.search.max_transforms
-        ) or self.is_solved
 
         inchis = [mol.inchi_key for mol in self.mols]
         self._hash = hash(tuple(sorted(inchis)))
 
         inchis = [mol.inchi_key for mol in self.expandable_mols]
         self.expandables_hash = hash(tuple(sorted(inchis)))
+
+    @property
+    def is_terminal(self) -> bool:
+        return (
+            self.max_transforms >= self._config.search.max_transforms
+        ) or self.is_solved
 
     def __hash__(self) -> int:
         return self._hash

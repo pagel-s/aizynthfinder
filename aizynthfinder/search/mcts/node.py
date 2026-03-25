@@ -68,7 +68,7 @@ class MctsNode:
         self._filter_policy = config.filter_policy
         self.tree = owner
         self.is_expanded: bool = False
-        self.is_expandable: bool = not self.state.is_terminal
+        self.is_expandable: bool = not self.state.is_solved
         self._parent = parent
 
         if owner is None:
@@ -256,7 +256,7 @@ class MctsNode:
             self._logger.debug(msg)
             raise NodeUnexpectedBehaviourException(msg)
 
-        if self.is_expanded or not self.is_expandable:
+        if self.is_expanded or self.is_terminal():
             return
 
         self.is_expanded = True
