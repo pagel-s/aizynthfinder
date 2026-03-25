@@ -284,6 +284,7 @@ class TemplatedRetroReaction(RetroReaction):
     """
 
     _required_kwargs = ["smarts"]
+    _application_cache = {}
 
     def __init__(
         self,
@@ -314,10 +315,24 @@ class TemplatedRetroReaction(RetroReaction):
         dict_["smarts"] = self.smarts
         return dict_
 
+    @classmethod
+    def reset_application_cache(cls) -> None:
+        cls._application_cache = {}
+
     def _apply(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
+        cache_key = (self.mol.mapped_smiles, self.smarts, self._use_rdchiral)
+        cached_reactants = self._application_cache.get(cache_key)
+        if cached_reactants is not None:
+            self._reactants = self._restore_cached_reactants(cached_reactants)
+            return self._reactants
+
         if self._use_rdchiral:
-            return self._apply_with_rdchiral()
-        return self._apply_with_rdkit()
+            reactants = self._apply_with_rdchiral()
+        else:
+            reactants = self._apply_with_rdkit()
+
+        self._application_cache[cache_key] = self._cacheable_reactants(reactants)
+        return reactants
 
     def _apply_with_rdchiral(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
         """
@@ -366,7 +381,7 @@ class TemplatedRetroReaction(RetroReaction):
         return self._reactants
 
     def _apply_with_rdkit(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
-        rxn = AllChem.ReactionFromSmarts(self.smarts)
+        rxn = self.rd_reaction
         try:
             reactants_list = rxn.RunReactants([self.mol.mapped_mol])
         except:  # pylint: disable=bare-except
@@ -393,6 +408,30 @@ class TemplatedRetroReaction(RetroReaction):
         self._reactants = tuple(outcomes)
 
         return self._reactants
+
+    @staticmethod
+    def _cacheable_reactants(
+        reactants: Tuple[Tuple[TreeMolecule, ...], ...]
+    ) -> Tuple[Tuple[str, ...], ...]:
+        return tuple(
+            tuple(mol.mapped_smiles for mol in reactant_set)
+            for reactant_set in reactants
+        )
+
+    def _restore_cached_reactants(
+        self, reactants: Tuple[Tuple[str, ...], ...]
+    ) -> Tuple[Tuple[TreeMolecule, ...], ...]:
+        outcomes = []
+        for reactant_set in reactants:
+            try:
+                mols = tuple(
+                    TreeMolecule(parent=self.mol, smiles=smi, sanitize=True)
+                    for smi in reactant_set
+                )
+            except MoleculeException:
+                continue
+            outcomes.append(mols)
+        return tuple(outcomes)
 
     def _make_smiles(self):
         return AllChem.ReactionToSmiles(self.rd_reaction)

@@ -1,3 +1,6 @@
+import pytest
+from rdkit.Chem import AllChem
+
 from aizynthfinder.chem import (
     FixedRetroReaction,
     SmilesBasedRetroReaction,
@@ -6,6 +9,13 @@ from aizynthfinder.chem import (
     UniqueMolecule,
     hash_reactions,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_templated_reaction_cache():
+    TemplatedRetroReaction.reset_application_cache()
+    yield
+    TemplatedRetroReaction.reset_application_cache()
 
 
 def test_retro_reaction(get_action):
@@ -55,6 +65,30 @@ def test_retro_reaction_with_rdkit(get_action):
 
     reaction = get_action(applicable=False)
     assert not reaction.reactants
+
+
+def test_retro_reaction_with_rdkit_application_cache(get_action, mocker):
+    TemplatedRetroReaction.reset_application_cache()
+    patched = mocker.patch(
+        "aizynthfinder.chem.reaction.AllChem.ReactionFromSmarts",
+        wraps=AllChem.ReactionFromSmarts,
+    )
+
+    reaction1 = get_action(applicable=True, use_rdchiral=False)
+    reaction2 = get_action(applicable=True, use_rdchiral=False)
+
+    reactants1 = tuple(
+        tuple(mol.mapped_smiles for mol in reactant_set)
+        for reactant_set in reaction1.reactants
+    )
+    reactants2 = tuple(
+        tuple(mol.mapped_smiles for mol in reactant_set)
+        for reactant_set in reaction2.reactants
+    )
+
+    assert reactants1 == reactants2
+    assert patched.call_count == 1
+    TemplatedRetroReaction.reset_application_cache()
 
 
 def test_retro_reaction_fingerprint(get_action):
