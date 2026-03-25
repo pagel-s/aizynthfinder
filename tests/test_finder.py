@@ -62,53 +62,6 @@ def test_tree_search_sets_random_seed(setup_aizynthfinder, mocker):
     numpy_seed.assert_called_once_with(7)
 
 
-def test_tree_search_adds_ringbreaker_for_stalled_depth_limited_search(mocker):
-    class DummyPolicy:
-        def __init__(self, cutoff_number):
-            self.cutoff_number = cutoff_number
-
-    class DummyExpansionPolicy:
-        def __init__(self):
-            self.items = {"uspto": object(), "ringbreaker": DummyPolicy(25)}
-            self.selection = ["uspto"]
-            self.calls = []
-
-        def __getitem__(self, key):
-            return self.items[key]
-
-        def select(self, selection, append=False):
-            self.calls.append((selection, append))
-            if append:
-                self.selection.append(selection)
-            else:
-                self.selection = (
-                    list(selection) if isinstance(selection, list) else [selection]
-                )
-
-    finder = AiZynthFinder()
-    finder.tree = mocker.MagicMock()
-    finder.tree.one_iteration.return_value = False
-    finder.expansion_policy = DummyExpansionPolicy()
-    finder.config.search.iteration_limit = 751
-    finder.config.search.time_limit = 100
-
-    mocker.patch.object(finder, "_set_random_seed")
-    mocker.patch.object(
-        finder, "_has_depth_limited_single_precursor_state", return_value=False
-    )
-    mocker.patch.object(finder, "_has_depth_limited_state", return_value=True)
-
-    finder.tree_search()
-
-    assert finder.expansion_policy.calls[-2:] == [
-        ("ringbreaker", True),
-        (["uspto"], False),
-    ]
-    assert finder.expansion_policy["ringbreaker"].cutoff_number == 25
-    assert finder.config.search.max_transforms == 6
-    assert finder.search_stats["iterations"] == 751
-
-
 def test_freeze_bond_not_in_target_mol(setup_aizynthfinder):
     root_smi = "CN1CCC(C(=O)c2cccc([NH:1][C:2](=O)c3ccc(F)cc3)c2F)CC1"
     lookup = {root_smi: []}

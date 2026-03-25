@@ -221,7 +221,6 @@ class AiZynthFinder:
         single_precursor_rescue_activated = False
         ringbreaker_rescue_activated = False
         single_precursor_rescue_recheck_interval = 50
-        stall_ringbreaker_rescue_start_iteration = 751
 
         time0 = time.time()
         i = 1
@@ -265,25 +264,6 @@ class AiZynthFinder:
                         self.expansion_policy.select("ringbreaker", append=True)
                         ringbreaker_rescue_activated = True
                     single_precursor_rescue_activated = True
-                if (
-                    depth_rescue_activated
-                    and not ringbreaker_rescue_activated
-                    and "first_solution_time" not in self.search_stats
-                    and i >= stall_ringbreaker_rescue_start_iteration
-                    and (
-                        i - stall_ringbreaker_rescue_start_iteration
-                    ) % single_precursor_rescue_recheck_interval
-                    == 0
-                    and self._has_depth_limited_state(self.config.search.max_transforms)
-                    and "ringbreaker" in self.expansion_policy.items
-                    and "ringbreaker" not in self.expansion_policy.selection
-                ):
-                    if original_ringbreaker_cutoff_number is not None:
-                        self.expansion_policy["ringbreaker"].cutoff_number = min(
-                            original_ringbreaker_cutoff_number, 10
-                        )
-                    self.expansion_policy.select("ringbreaker", append=True)
-                    ringbreaker_rescue_activated = True
                 if show_progress:
                     pbar.update(1)
                 self.search_stats["iterations"] += 1
@@ -328,11 +308,6 @@ class AiZynthFinder:
         np.random.seed(seed)
 
     def _has_depth_limited_single_precursor_state(self, max_transforms: int) -> bool:
-        return self._has_depth_limited_state(max_transforms, max_expandable_mols=1)
-
-    def _has_depth_limited_state(
-        self, max_transforms: int, max_expandable_mols: Optional[int] = None
-    ) -> bool:
         if not self.tree or not self.tree.root:
             return False
 
@@ -342,10 +317,7 @@ class AiZynthFinder:
             state = node.state
             if (
                 not state.is_solved
-                and (
-                    max_expandable_mols is None
-                    or len(state.expandable_mols) == max_expandable_mols
-                )
+                and len(state.expandable_mols) == 1
                 and state.max_transforms >= max_transforms
             ):
                 return True
