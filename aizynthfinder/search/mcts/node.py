@@ -80,6 +80,9 @@ class MctsNode:
         self._children_priors: List[float] = []
         self._children_visitations: List[int] = []
         self._children_actions: List[RetroReaction] = []
+        self._children_actions_pending: List[RetroReaction] = []
+        self._children_priors_pending: List[float] = []
+        self._children_widening_steps = 0
         self._children: List[Optional[MctsNode]] = []
         self._children_idx = {}
 
@@ -149,6 +152,12 @@ class MctsNode:
             deserialize_action(action_dict, molecules)
             for action_dict in dict_["children_actions"]
         ]
+        node._children_actions_pending = [
+            deserialize_action(action_dict, molecules)
+            for action_dict in dict_.get("pending_children_actions", [])
+        ]
+        node._children_priors_pending = list(dict_.get("pending_children_priors", []))
+        node._children_widening_steps = int(dict_.get("children_widening_steps", 0))
         node._children = [
             cls.from_dict(child, tree, config, molecules, parent=node)
             if child
@@ -266,7 +275,13 @@ class MctsNode:
         actions, priors = self._expansion_policy(
             self.state.expandable_mols, cache_molecules
         )
-        actions, priors = self._prune_expansion_width(actions, priors)
+        (
+            actions,
+            priors,
+            self._children_actions_pending,
+            self._children_priors_pending,
+        ) = self._partition_expansion_width(actions, priors)
+        self._children_widening_steps = 0
         self._fill_children_lists(actions, priors)
 
         # Reverse the expansion if it did not produce any children
@@ -321,6 +336,7 @@ class MctsNode:
         child = None
         while child is None:
             try:
+                self._maybe_widen_children()
                 child = self._score_and_select()
             # _score_and_select raises exception if no children can be selected
             except ValueError:
@@ -343,7 +359,7 @@ class MctsNode:
         :param molecule_store: the serialized molecules
         :return: the serialized node
         """
-        return {
+        dict_ = {
             "state": self.state.serialize(molecule_store),
             "children_values": self._serialize_stats_list("_children_values"),
             "children_priors": self._serialize_stats_list("_children_priors"),
@@ -359,6 +375,14 @@ class MctsNode:
             "is_expanded": self.is_expanded,
             "is_expandable": self.is_expandable,
         }
+        if self._children_actions_pending:
+            dict_["pending_children_actions"] = [
+                serialize_action(action, molecule_store)
+                for action in self._children_actions_pending
+            ]
+            dict_["pending_children_priors"] = list(self._children_priors_pending)
+            dict_["children_widening_steps"] = self._children_widening_steps
+        return dict_
 
     def to_reaction_tree(self) -> ReactionTree:
         """
@@ -443,9 +467,17 @@ class MctsNode:
         else:
             self._children_values = [self._algo_config["default_prior"]] * nactions
 
-    def _prune_expansion_width(
+    def _partition_expansion_width(
         self, actions: List[RetroReaction], priors: List[float]
-    ) -> Tuple[List[RetroReaction], List[float]]:
+    ) -> Tuple[
+        List[RetroReaction],
+        List[float],
+        List[RetroReaction],
+        List[float],
+    ]:
+        if len(self._algo_config["search_rewards"]) != 1:
+            return actions, priors, [], []
+
         late_expansion_cutoff_number = self._algo_config.get(
             "late_expansion_cutoff_number", 25
         )
@@ -453,15 +485,62 @@ class MctsNode:
             "late_expansion_start_transform", 4
         )
         if not late_expansion_cutoff_number:
-            return actions, priors
+            return actions, priors, [], []
         if self.state.max_transforms < late_expansion_start_transform:
-            return actions, priors
+            return actions, priors, [], []
         if len(actions) <= late_expansion_cutoff_number:
-            return actions, priors
+            return actions, priors, [], []
         return (
             actions[:late_expansion_cutoff_number],
             priors[:late_expansion_cutoff_number],
+            actions[late_expansion_cutoff_number:],
+            priors[late_expansion_cutoff_number:],
         )
+
+    def _append_pending_children(self, nactions: int) -> None:
+        if nactions <= 0:
+            return
+
+        new_actions = self._children_actions_pending[:nactions]
+        new_priors = self._children_priors_pending[:nactions]
+        del self._children_actions_pending[:nactions]
+        del self._children_priors_pending[:nactions]
+
+        self._children_actions.extend(new_actions)
+        self._children_priors.extend(new_priors)
+        self._children_visitations.extend([1] * len(new_actions))
+        self._children.extend([None] * len(new_actions))
+        if self._algo_config["use_prior"]:
+            self._children_values.extend(new_priors)
+        else:
+            self._children_values.extend(
+                [self._algo_config["default_prior"]] * len(new_actions)
+            )
+
+    def _maybe_widen_children(self) -> None:
+        if not self._children_actions_pending:
+            return
+
+        late_expansion_batch_number = self._algo_config.get(
+            "late_expansion_batch_number", 5
+        )
+        late_expansion_widen_interval = self._algo_config.get(
+            "late_expansion_widen_interval", 10
+        )
+        if not late_expansion_batch_number or not late_expansion_widen_interval:
+            return
+
+        revisits = max(
+            sum(self._children_visitations) - len(self._children_actions),
+            0,
+        )
+        while (
+            self._children_actions_pending
+            and revisits
+            >= (self._children_widening_steps + 1) * late_expansion_widen_interval
+        ):
+            self._append_pending_children(late_expansion_batch_number)
+            self._children_widening_steps += 1
 
     def _filter_child_reaction(self, reaction: RetroReaction) -> bool:
         if self._regenerated_blacklisted(reaction):
