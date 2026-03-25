@@ -261,17 +261,9 @@ class MctsNode:
 
         self.is_expanded = True
 
-        cache_molecules = []
-        if self.parent:
-            for child in self.parent.children:
-                if child is not self:
-                    cache_molecules.extend(child.state.expandable_mols)
-
         # Calculate the possible actions, fill the child_info lists
         # Actions by default only assumes 1 set of reactants
-        actions, priors = self._expansion_policy(
-            self.state.expandable_mols, cache_molecules
-        )
+        actions, priors = self._expansion_policy(self.state.expandable_mols)
         self._fill_children_lists(actions, priors)
 
         # Reverse the expansion if it did not produce any children
