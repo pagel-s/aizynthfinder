@@ -266,6 +266,7 @@ class MctsNode:
         actions, priors = self._expansion_policy(
             self.state.expandable_mols, cache_molecules
         )
+        actions, priors = self._prune_wide_late_expansion(actions, priors)
         self._fill_children_lists(actions, priors)
 
         # Reverse the expansion if it did not produce any children
@@ -446,6 +447,39 @@ class MctsNode:
             self._children_values = list(self._children_priors)
         else:
             self._children_values = [self._algo_config["default_prior"]] * nactions
+
+    def _prune_wide_late_expansion(
+        self, actions: List[RetroReaction], priors: List[float]
+    ) -> Tuple[List[RetroReaction], List[float]]:
+        late_wide_expansion_cutoff_number = self._algo_config.get(
+            "late_wide_expansion_cutoff_number", 25
+        )
+        late_wide_expansion_trigger_number = self._algo_config.get(
+            "late_wide_expansion_trigger_number", 30
+        )
+        late_wide_expansion_start_transform = self._algo_config.get(
+            "late_wide_expansion_start_transform", 5
+        )
+        late_wide_expansion_start_iteration = self._algo_config.get(
+            "late_wide_expansion_start_iteration", 250
+        )
+        if not late_wide_expansion_cutoff_number:
+            return actions, priors
+        if len(actions) <= late_wide_expansion_trigger_number:
+            return actions, priors
+        if self.state.max_transforms < late_wide_expansion_start_transform:
+            return actions, priors
+        if (
+            self.tree
+            and self.tree.profiling["iterations"] < late_wide_expansion_start_iteration
+        ):
+            return actions, priors
+        if len(actions) <= late_wide_expansion_cutoff_number:
+            return actions, priors
+        return (
+            actions[:late_wide_expansion_cutoff_number],
+            priors[:late_wide_expansion_cutoff_number],
+        )
 
     def _filter_child_reaction(self, reaction: RetroReaction) -> bool:
         if self._regenerated_blacklisted(reaction):
