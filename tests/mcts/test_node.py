@@ -1,3 +1,6 @@
+from aizynthfinder.search.mcts import MctsSearchTree
+
+
 def test_root_state_properties(generate_root):
     root = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1")
     root2 = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1")
@@ -181,3 +184,81 @@ def test_expand_recursive(setup_policies, generate_root, default_config):
     child = node.promising_child()
 
     assert child is None
+
+
+def test_expand_prunes_only_wide_late_nodes(setup_policies, default_config):
+    root_smiles = "CCCCOc1ccc(CC(=O)N(C)O)cc1"
+    expansions = {
+        root_smiles: [
+            {"smiles": f"C{i}", "prior": 1.0 - i * 0.1} for i in range(6)
+        ]
+    }
+    default_config.search.algorithm_config["late_wide_expansion_cutoff_number"] = 3
+    default_config.search.algorithm_config["late_wide_expansion_trigger_number"] = 5
+    default_config.search.algorithm_config["late_wide_expansion_start_transform"] = 0
+    default_config.search.algorithm_config["late_wide_expansion_start_iteration"] = 10
+    setup_policies(expansions, config=default_config)
+    tree = MctsSearchTree(config=default_config, root_smiles=root_smiles)
+    tree.profiling["iterations"] = 10
+
+    tree.root.expand()
+
+    view = tree.root.children_view()
+    assert len(view["actions"]) == 3
+    assert view["priors"] == [1.0, 0.9, 0.8]
+
+
+def test_expand_keeps_wide_node_before_late_iteration(setup_policies, default_config):
+    root_smiles = "CCCCOc1ccc(CC(=O)N(C)O)cc1"
+    expansions = {
+        root_smiles: [
+            {"smiles": f"C{i}", "prior": 1.0 - i * 0.1} for i in range(6)
+        ]
+    }
+    default_config.search.algorithm_config["late_wide_expansion_cutoff_number"] = 3
+    default_config.search.algorithm_config["late_wide_expansion_trigger_number"] = 5
+    default_config.search.algorithm_config["late_wide_expansion_start_transform"] = 0
+    default_config.search.algorithm_config["late_wide_expansion_start_iteration"] = 10
+    setup_policies(expansions, config=default_config)
+    tree = MctsSearchTree(config=default_config, root_smiles=root_smiles)
+    tree.profiling["iterations"] = 9
+
+    tree.root.expand()
+
+    view = tree.root.children_view()
+    assert len(view["actions"]) == 6
+    assert view["priors"] == [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
+
+
+def test_expand_prunes_wide_node_near_depth_limit_by_default(
+    setup_policies, default_config
+):
+    wide_leaf_smiles = ["N", "O", "F", "Cl", "Br", "I"]
+    expansions = {
+        "C": {"smiles": "CC", "prior": 1.0},
+        "CC": {"smiles": "CCC", "prior": 1.0},
+        "CCC": {"smiles": "CCCC", "prior": 1.0},
+        "CCCC": {"smiles": "CCCCC", "prior": 1.0},
+        "CCCCC": {"smiles": "CCCCCC", "prior": 1.0},
+        "CCCCCC": [
+            {"smiles": smiles, "prior": 1.0 - idx * 0.1}
+            for idx, smiles in enumerate(wide_leaf_smiles)
+        ],
+    }
+    default_config.search.algorithm_config["late_wide_expansion_cutoff_number"] = 3
+    default_config.search.algorithm_config["late_wide_expansion_trigger_number"] = 5
+    default_config.search.algorithm_config["late_wide_expansion_start_iteration"] = 10
+    setup_policies(expansions, config=default_config)
+    tree = MctsSearchTree(config=default_config, root_smiles="C")
+    node = tree.root
+    for _ in range(5):
+        node.expand()
+        node = node.promising_child()
+        assert node is not None
+    tree.profiling["iterations"] = 10
+
+    node.expand()
+
+    view = node.children_view()
+    assert node.state.max_transforms == default_config.search.max_transforms - 1
+    assert len(view["actions"]) == 3
