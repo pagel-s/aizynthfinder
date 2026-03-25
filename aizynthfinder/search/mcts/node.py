@@ -580,9 +580,36 @@ class MctsNode:
         if not max(self._children_values) > 0:
             raise ValueError("Has no selectable children")
         scores = self._children_q() + self._children_u()
+        widened_scores = self._progressive_widening_scores(scores)
+        if np.max(widened_scores) > 0:
+            scores = widened_scores
         indices = np.where(scores == scores.max())[0]
         index = np.random.choice(indices)
         return self._select_child(index)
+
+    def _progressive_widening_scores(self, scores: np.ndarray) -> np.ndarray:
+        if len(scores) <= 24:
+            return scores
+
+        parent_visits = max(
+            int(np.sum(self._children_visitations)) - len(self._children_visitations), 0
+        )
+        active_count = min(len(scores), 16 + int(2 * np.sqrt(parent_visits + 1)))
+        if active_count >= len(scores):
+            return scores
+
+        priority_order = np.argsort(np.asarray(self._children_priors))[::-1]
+        active_indices = set(priority_order[:active_count].tolist())
+        active_indices.update(
+            idx for idx, child in enumerate(self._children) if child is not None
+        )
+        if len(active_indices) == len(scores):
+            return scores
+
+        widened_scores = np.full_like(scores, -np.inf, dtype=float)
+        active_array = np.asarray(sorted(active_indices), dtype=int)
+        widened_scores[active_array] = scores[active_array]
+        return widened_scores
 
     def _select_child(self, child_idx: int) -> Optional["MctsNode"]:
         """
