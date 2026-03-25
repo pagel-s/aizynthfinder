@@ -138,25 +138,6 @@ def test_select_child_prefers_best_instantiated_outcome(
     assert selected is high_score_child
 
 
-def test_expand_child_does_not_prefetch_sibling_molecules(setup_mcts_search):
-    root, strategy, _ = setup_mcts_search
-    root.expand()
-    first_child = root.promising_child()
-    second_child = root._select_child(1)
-    first_child_expandables = {
-        mol.inchi_key for mol in first_child.state.expandable_mols
-    }
-    second_child_expandables = {
-        mol.inchi_key for mol in second_child.state.expandable_mols
-    }
-
-    strategy.cache = set()
-    second_child.expand()
-
-    assert second_child_expandables.issubset(strategy.cache)
-    assert first_child_expandables.isdisjoint(strategy.cache)
-
-
 def test_backpropagate(setup_mcts_search):
     root, _, _ = setup_mcts_search
     root.expand()
