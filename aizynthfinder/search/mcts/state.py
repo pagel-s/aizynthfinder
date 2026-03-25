@@ -40,10 +40,23 @@ class MctsState:
     :param config: settings of the tree search algorithm
     """
 
-    def __init__(self, mols: Sequence[TreeMolecule], config: Configuration) -> None:
+    def __init__(
+        self,
+        mols: Sequence[TreeMolecule],
+        config: Configuration,
+        in_stock_list: Optional[Sequence[Optional[bool]]] = None,
+    ) -> None:
         self.mols = mols
         self.stock = config.stock
-        self.in_stock_list = [mol in self.stock for mol in self.mols]
+        if in_stock_list is not None and len(in_stock_list) != len(self.mols):
+            raise ValueError("The stock-status list must match the number of molecules")
+        provided_statuses = (
+            list(in_stock_list) if in_stock_list is not None else [None] * len(self.mols)
+        )
+        self.in_stock_list = [
+            status if status is not None else mol in self.stock
+            for mol, status in zip(self.mols, provided_statuses)
+        ]
         self.expandable_mols = [
             mol for mol, in_stock in zip(self.mols, self.in_stock_list) if not in_stock
         ]

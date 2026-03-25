@@ -1,3 +1,8 @@
+from aizynthfinder.chem import SmilesBasedRetroReaction, TreeMolecule
+from aizynthfinder.context.stock.queries import StockQueryMixin
+from aizynthfinder.search.mcts import MctsNode, MctsState
+
+
 def test_root_state_properties(generate_root):
     root = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1")
     root2 = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1")
@@ -136,6 +141,45 @@ def test_select_child_prefers_best_instantiated_outcome(
     selected = root._select_child(0)
 
     assert selected is high_score_child
+
+
+def test_instantiate_child_reuses_parent_stock_status(default_config):
+    class CountingStockQuery(StockQueryMixin):
+        def __init__(self, available):
+            self.available = {mol.inchi_key for mol in available}
+            self.calls = 0
+
+        def __contains__(self, mol):
+            self.calls += 1
+            return mol.inchi_key in self.available
+
+    keep_mol = TreeMolecule(parent=None, smiles="O", transform=0)
+    expand_mol = TreeMolecule(parent=None, smiles="CC", transform=0)
+    stock_query = CountingStockQuery([keep_mol])
+    default_config.stock.load(stock_query, "counting")
+    default_config.stock.select("counting")
+
+    state = MctsState([keep_mol, expand_mol], default_config)
+    assert stock_query.calls == 2
+
+    node = MctsNode(state=state, owner=None, config=default_config)
+    node._children_actions = [
+        SmilesBasedRetroReaction(
+            expand_mol,
+            reactants_str="CO",
+            metadata={"policy_name": "simple_expansion"},
+        )
+    ]
+    node._children_priors = [1.0]
+    node._children_values = [1.0]
+    node._children_visitations = [1]
+    node._children = [None]
+
+    new_nodes = node._instantiate_child(0)
+
+    assert stock_query.calls == 3
+    assert len(new_nodes) == 1
+    assert new_nodes[0].state.in_stock_list == [True, False]
 
 
 def test_backpropagate(setup_mcts_search):
