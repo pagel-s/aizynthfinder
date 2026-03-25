@@ -61,7 +61,6 @@ class Stock(ContextCollection):
     def __init__(self) -> None:
         super().__init__()
         self._exclude: Set[str] = set()
-        self._contains_cache: Dict[str, bool] = {}
         self._stop_criteria: StrDict = {
             "amount": None,
             "price": None,
@@ -71,24 +70,15 @@ class Stock(ContextCollection):
         self._use_stop_criteria: bool = False
 
     def __contains__(self, mol: Molecule) -> bool:
-        if not self.selection:
-            return False
-        inchi_key = mol.inchi_key
-        if inchi_key in self._exclude:
+        if not self.selection or mol.inchi_key in self._exclude:
             return False
 
         if self._use_stop_criteria:
             return self._apply_stop_criteria(mol)
 
-        cached = self._contains_cache.get(inchi_key)
-        if cached is not None:
-            return cached
-
         for key in self.selection:
             if mol in self[key]:
-                self._contains_cache[inchi_key] = True
                 return True
-        self._contains_cache[inchi_key] = False
         return False
 
     def __len__(self) -> int:
@@ -154,7 +144,6 @@ class Stock(ContextCollection):
         :param mol: the molecule to exclude
         """
         self._exclude.add(mol.inchi_key)
-        self._contains_cache = {}
 
     def load(self, source: StockQueryMixin, key: str) -> None:  # type: ignore
         """
@@ -170,7 +159,6 @@ class Stock(ContextCollection):
 
         self._logger.info(f"Loading stock from {source.__class__.__name__} to {key}")
         self._items[key] = source
-        self._contains_cache = {}
 
     def load_from_config(self, **config: Any) -> None:
         """
@@ -235,7 +223,6 @@ class Stock(ContextCollection):
     def reset_exclusion_list(self) -> None:
         """Remove all molecules in the exclusion list"""
         self._exclude = set()
-        self._contains_cache = {}
 
     def select(self, value: Union[str, List[str]], append: bool = False) -> None:
         """
@@ -245,7 +232,6 @@ class Stock(ContextCollection):
         :param append: if True and ``value`` is a single key append it to the current selection
         """
         super().select(value, append)
-        self._contains_cache = {}
         try:
             self._logger.info(f"Compounds in stock: {len(self)}")
         except (TypeError, ValueError):  # In case len is not possible to compute
@@ -282,7 +268,6 @@ class Stock(ContextCollection):
             "counts": copy.deepcopy(criteria.get("size", criteria.get("counts"))),
         }
         self._use_stop_criteria = any(self._stop_criteria.values())
-        self._contains_cache = {}
         reduced_criteria = {
             key: value for key, value in self._stop_criteria.items() if value
         }
