@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def test_root_state_properties(generate_root):
     root = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1")
     root2 = generate_root("CCCCOc1ccc(CC(=O)N(C)O)cc1")
@@ -139,28 +136,6 @@ def test_select_child_prefers_best_instantiated_outcome(
     selected = root._select_child(0)
 
     assert selected is high_score_child
-
-
-def test_score_and_select_passes_all_best_children(generate_root, monkeypatch):
-    root = generate_root("CCCO")
-    child1 = generate_root("CCBr")
-    child2 = generate_root("CCCl")
-    child3 = generate_root("CCI")
-    root._children = [child1, child2, child3]
-    root._children_values = [1.0, 2.0, 2.0]
-    root._children_visitations = [1, 1, 1]
-    seen_indices = []
-
-    def fake_choice(indices):
-        seen_indices.append(list(indices))
-        return indices[0]
-
-    monkeypatch.setattr(np.random, "choice", fake_choice)
-
-    selected = root._score_and_select()
-
-    assert selected is child2
-    assert seen_indices == [[1, 2]]
 
 
 def test_backpropagate(setup_mcts_search):

@@ -2,7 +2,6 @@
 """
 from __future__ import annotations
 
-import math
 import random
 from typing import TYPE_CHECKING
 
@@ -580,21 +579,9 @@ class MctsNode:
     def _score_and_select(self) -> Optional["MctsNode"]:
         if not max(self._children_values) > 0:
             raise ValueError("Has no selectable children")
-        total_visits = sum(self._children_visitations)
-        total_visits_log = math.log(total_visits)
-        exploration_scale = self._algo_config["C"] * math.sqrt(2.0 * total_visits_log)
-        best_score = float("-inf")
-        best_indices = []
-        for idx, (value, visits) in enumerate(
-            zip(self._children_values, self._children_visitations)
-        ):
-            score = (value / visits) + (exploration_scale / math.sqrt(visits))
-            if score > best_score:
-                best_score = score
-                best_indices = [idx]
-            elif score == best_score:
-                best_indices.append(idx)
-        index = np.random.choice(best_indices)
+        scores = self._children_q() + self._children_u()
+        indices = np.where(scores == scores.max())[0]
+        index = np.random.choice(indices)
         return self._select_child(index)
 
     def _select_child(self, child_idx: int) -> Optional["MctsNode"]:
