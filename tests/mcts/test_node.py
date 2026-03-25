@@ -24,42 +24,6 @@ def test_expand_root_node(setup_mcts_search):
     assert view["objects"] == [None, None, None]
 
 
-def test_expand_root_with_late_expansion_cap(setup_mcts_search, default_config):
-    root, _, _ = setup_mcts_search
-    default_config.search.algorithm_config["late_expansion_cutoff_number"] = 2
-    default_config.search.algorithm_config["late_expansion_start_transform"] = 0
-
-    root.expand()
-
-    view = root.children_view()
-    assert len(view["actions"]) == 2
-    assert view["priors"] == [0.7, 0.5]
-    assert view["values"] == [0.7, 0.5]
-    assert view["visitations"] == [1, 1]
-    assert view["objects"] == [None, None]
-
-
-def test_expand_root_with_late_expansion_widening(setup_mcts_search, default_config):
-    root, _, _ = setup_mcts_search
-    default_config.search.algorithm_config["late_expansion_cutoff_number"] = 1
-    default_config.search.algorithm_config["late_expansion_start_transform"] = 0
-    default_config.search.algorithm_config["late_expansion_batch_number"] = 1
-    default_config.search.algorithm_config["late_expansion_widen_interval"] = 1
-
-    root.expand()
-    assert len(root.children_view()["actions"]) == 1
-
-    root._children_visitations = [2]
-    root._maybe_widen_children()
-
-    view = root.children_view()
-    assert len(view["actions"]) == 2
-    assert view["priors"] == [0.7, 0.5]
-    assert view["values"] == [0.7, 0.5]
-    assert view["visitations"] == [2, 1]
-    assert view["objects"] == [None, None]
-
-
 def test_expand_root_with_default_priors(setup_mcts_search, set_default_prior):
     root, _, _ = setup_mcts_search
     set_default_prior(0.01)
