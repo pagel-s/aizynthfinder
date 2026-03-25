@@ -109,6 +109,16 @@ class MctsSearchTree:
             parent.backpropagate(current, value_estimate)  # type: ignore
             current = parent
 
+    def _score_node(self, node: MctsNode, scorer_name: str) -> float:
+        scorer = self.reward_scorer[scorer_name]
+        return node.cached_score(scorer_name, scorer)
+
+    def _score_vector(self, node: MctsNode) -> Sequence[float]:
+        return [
+            self._score_node(node, scorer_name)
+            for scorer_name in self.reward_scorer.selection
+        ]
+
     def compute_reward(self, node: MctsNode) -> Union[float, Sequence[float]]:
         """
         Compute the reward of a node in the search tree, using one of
@@ -121,13 +131,17 @@ class MctsSearchTree:
         :returns: the value from the scorer(s)
         """
         if self.mode == "single-objective":
-            return self.reward_scorer[self.reward_scorer_name](node)
+            return self._score_node(node, self.reward_scorer_name)
 
         if self.mode == "multi-objective":
-            return self.reward_scorer.score_vector(node)
+            return self._score_vector(node)
 
-        return self.reward_scorer.weighted_score(
-            node, self.config.search.algorithm_config["search_rewards_weights"]
+        return sum(
+            weight * score
+            for weight, score in zip(
+                self.config.search.algorithm_config["search_rewards_weights"],
+                self._score_vector(node),
+            )
         )
 
     def graph(self, recreate: bool = False) -> nx.DiGraph:

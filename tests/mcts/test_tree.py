@@ -31,6 +31,20 @@ def test_backpropagation(setup_complete_mcts_tree, mocker):
     nodes[2].backpropagate.assert_not_called()
 
 
+def test_compute_reward_caches_single_objective_scores(default_config, mocker):
+    tree = MctsSearchTree(config=default_config, root_smiles="CC")
+    assert tree.root is not None
+    scorer = tree.reward_scorer[tree.reward_scorer_name]
+    mocked_score = mocker.patch.object(scorer, "_score_node", return_value=0.123)
+
+    score1 = tree.compute_reward(tree.root)
+    score2 = tree.compute_reward(tree.root)
+
+    assert score1 == 0.123
+    assert score2 == 0.123
+    mocked_score.assert_called_once_with(tree.root)
+
+
 def test_route_to_node(setup_complete_mcts_tree):
     tree, nodes = setup_complete_mcts_tree
 

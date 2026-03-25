@@ -82,6 +82,7 @@ class MctsNode:
         self._children_actions: List[RetroReaction] = []
         self._children: List[Optional[MctsNode]] = []
         self._children_idx = {}
+        self._score_cache = {}
 
         self.blacklist = set(mol.inchi_key for mol in state.expandable_mols)
         if parent:
@@ -196,6 +197,11 @@ class MctsNode:
         :return: the list of actions
         """
         return self.path_to()[0]
+
+    def cached_score(self, scorer_name: str, scorer) -> float:
+        if scorer_name not in self._score_cache:
+            self._score_cache[scorer_name] = scorer(self)
+        return self._score_cache[scorer_name]
 
     def backpropagate(self, child: "MctsNode", value_estimate: float) -> None:
         """
@@ -601,8 +607,12 @@ class MctsNode:
         if len(search_rewards) != 1:
             return random.choice(new_nodes)
 
-        scorer = self._config.scorers[search_rewards[0]]
-        scores = [scorer(node) for node in new_nodes]
+        scorer_name = search_rewards[0]
+        if self.tree:
+            scores = [self.tree.compute_reward(node) for node in new_nodes]
+        else:
+            scorer = self._config.scorers[scorer_name]
+            scores = [node.cached_score(scorer_name, scorer) for node in new_nodes]
         if any(not np.isscalar(score) for score in scores):
             return random.choice(new_nodes)
 
