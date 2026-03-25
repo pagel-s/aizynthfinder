@@ -376,7 +376,7 @@ class TemplatedRetroReaction(RetroReaction):
                 pass
             else:
                 outcomes.append(rct_objs)
-        self._reactants = tuple(outcomes)
+        self._reactants = self._deduplicate_outcomes(outcomes)
 
         return self._reactants
 
@@ -405,9 +405,23 @@ class TemplatedRetroReaction(RetroReaction):
                 pass
             else:
                 outcomes.append(mols)
-        self._reactants = tuple(outcomes)
+        self._reactants = self._deduplicate_outcomes(outcomes)
 
         return self._reactants
+
+    @staticmethod
+    def _deduplicate_outcomes(
+        outcomes: Iterable[Tuple[TreeMolecule, ...]]
+    ) -> Tuple[Tuple[TreeMolecule, ...], ...]:
+        unique_outcomes = []
+        seen = set()
+        for outcome in outcomes:
+            outcome_key = tuple(sorted(mol.inchi_key for mol in outcome))
+            if outcome_key in seen:
+                continue
+            seen.add(outcome_key)
+            unique_outcomes.append(outcome)
+        return tuple(unique_outcomes)
 
     @staticmethod
     def _cacheable_reactants(
@@ -431,7 +445,7 @@ class TemplatedRetroReaction(RetroReaction):
             except MoleculeException:
                 continue
             outcomes.append(mols)
-        return tuple(outcomes)
+        return self._deduplicate_outcomes(outcomes)
 
     def _make_smiles(self):
         return AllChem.ReactionToSmiles(self.rd_reaction)

@@ -91,6 +91,37 @@ def test_retro_reaction_with_rdkit_application_cache(get_action, mocker):
     TemplatedRetroReaction.reset_application_cache()
 
 
+def test_retro_reaction_deduplicates_rdchiral_outcomes(get_action, mocker):
+    reaction = get_action(applicable=True)
+    mocker.patch(
+        "aizynthfinder.chem.reaction.rdc.rdchiralRun",
+        return_value=[
+            "CCCCOc1ccc(CC(=O)Cl)cc1.CNO",
+            "CNO.CCCCOc1ccc(CC(=O)Cl)cc1",
+        ],
+    )
+
+    reactants = reaction.reactants
+
+    assert len(reactants) == 1
+    assert sorted(mol.smiles for mol in reactants[0]) == [
+        "CCCCOc1ccc(CC(=O)Cl)cc1",
+        "CNO",
+    ]
+
+
+def test_deduplicate_outcomes_is_order_insensitive():
+    parent = TreeMolecule(smiles="CCCO", parent=None)
+    mol1 = TreeMolecule(smiles="CC", parent=parent)
+    mol2 = TreeMolecule(smiles="CO", parent=parent)
+
+    deduplicated = TemplatedRetroReaction._deduplicate_outcomes(
+        [(mol1, mol2), (mol2, mol1)]
+    )
+
+    assert deduplicated == ((mol1, mol2),)
+
+
 def test_retro_reaction_fingerprint(get_action):
     reaction = get_action()
 
