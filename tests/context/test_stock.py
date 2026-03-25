@@ -7,7 +7,7 @@ from aizynthfinder.chem import Molecule
 from aizynthfinder.context.stock import (
     StockException,
 )
-from aizynthfinder.context.stock.queries import HAS_MOLBLOOM
+from aizynthfinder.context.stock.queries import HAS_MOLBLOOM, StockQueryMixin
 from aizynthfinder.tools.make_stock import (
     extract_plain_smiles,
     extract_smiles_from_module,
@@ -223,6 +223,37 @@ def test_exclude(default_config, setup_stock_with_query):
 
     stock.exclude(benzene)
     assert benzene not in stock
+
+
+def test_stock_membership_cache_reuses_inchi_key_lookup(
+    default_config
+):
+    class CountingStockQuery(StockQueryMixin):
+        def __init__(self, stock_mol):
+            self.stock_mol = stock_mol
+            self.calls = 0
+
+        def __contains__(self, mol):
+            self.calls += 1
+            return mol == self.stock_mol
+
+    mol = Molecule(smiles="c1ccccc1")
+    stock_query = CountingStockQuery(mol)
+    stock = default_config.stock
+
+    stock.load(stock_query, "stock1")
+    stock.select(["stock1"])
+
+    assert mol in stock
+    assert Molecule(smiles="c1ccccc1") in stock
+    assert stock_query.calls == 1
+
+    stock.exclude(mol)
+    assert mol not in stock
+
+    stock.reset_exclusion_list()
+    assert mol in stock
+    assert stock_query.calls == 2
 
 
 def test_exclude_many(default_config, setup_stock_with_query):
