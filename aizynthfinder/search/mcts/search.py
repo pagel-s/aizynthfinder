@@ -14,7 +14,6 @@ from aizynthfinder.utils.logging import logger
 
 if TYPE_CHECKING:
     from aizynthfinder.context.config import Configuration
-    from aizynthfinder.search.mcts.state import MctsState
     from aizynthfinder.utils.type_utils import List, Optional, Sequence, Union
 
 
@@ -56,8 +55,6 @@ class MctsSearchTree:
         else:
             self.root = None
 
-        self._best_state_transforms = {"full": {}, "partial": {}}
-        self._rebuild_state_cache()
         self._graph: Optional[nx.DiGraph] = None
 
         # For backward compatibility
@@ -89,7 +86,6 @@ class MctsSearchTree:
         tree.root = _MODE2NODECLASS[tree.mode].from_dict(
             dict_["tree"], tree, config, mol_deser
         )
-        tree._rebuild_state_cache()
         return tree
 
     def backpropagate(self, from_node: MctsNode) -> None:
@@ -160,17 +156,6 @@ class MctsSearchTree:
     def nodes(self) -> List[MctsNode]:
         """Return all the nodes in the search tree"""
         return list(self.graph())
-
-    def register_state(self, state: "MctsState", mode: str) -> bool:
-        if mode not in self._best_state_transforms:
-            return True
-
-        state_hash = state.expandables_hash if mode == "partial" else hash(state)
-        best_transform = self._best_state_transforms[mode].get(state_hash)
-        if best_transform is not None and best_transform <= state.max_transforms:
-            return False
-        self._best_state_transforms[mode][state_hash] = state.max_transforms
-        return True
 
     def one_iteration(self) -> bool:
         """
@@ -249,15 +234,3 @@ class MctsSearchTree:
                 f"currently have {nweights} weights and {nrewards} objectives)"
             )
         return mode
-
-    def _rebuild_state_cache(self) -> None:
-        self._best_state_transforms = {"full": {}, "partial": {}}
-        if not self.root:
-            return
-
-        nodes = [self.root]
-        while nodes:
-            node = nodes.pop()
-            self.register_state(node.state, "full")
-            self.register_state(node.state, "partial")
-            nodes.extend(node.children)
