@@ -219,8 +219,10 @@ class AiZynthFinder:
             )
         depth_rescue_activated = False
         single_precursor_rescue_activated = False
+        two_precursor_rescue_activated = False
         ringbreaker_rescue_activated = False
         single_precursor_rescue_recheck_interval = 50
+        two_precursor_rescue_recheck_interval = 50
 
         time0 = time.time()
         i = 1
@@ -264,6 +266,19 @@ class AiZynthFinder:
                         self.expansion_policy.select("ringbreaker", append=True)
                         ringbreaker_rescue_activated = True
                     single_precursor_rescue_activated = True
+                if (
+                    depth_rescue_activated
+                    and not single_precursor_rescue_activated
+                    and not two_precursor_rescue_activated
+                    and "first_solution_time" not in self.search_stats
+                    and i >= 751
+                    and (i - 751) % two_precursor_rescue_recheck_interval == 0
+                    and self._has_depth_limited_two_precursor_state(
+                        self.config.search.max_transforms
+                    )
+                ):
+                    self.config.search.max_transforms = original_max_transforms + 2
+                    two_precursor_rescue_activated = True
                 if show_progress:
                     pbar.update(1)
                 self.search_stats["iterations"] += 1
@@ -286,7 +301,11 @@ class AiZynthFinder:
         finally:
             if show_progress:
                 pbar.close()
-            if depth_rescue_activated or single_precursor_rescue_activated:
+            if (
+                depth_rescue_activated
+                or single_precursor_rescue_activated
+                or two_precursor_rescue_activated
+            ):
                 self.config.search.max_transforms = original_max_transforms
             if ringbreaker_rescue_activated:
                 if original_ringbreaker_cutoff_number is not None:
@@ -318,6 +337,23 @@ class AiZynthFinder:
             if (
                 not state.is_solved
                 and len(state.expandable_mols) == 1
+                and state.max_transforms >= max_transforms
+            ):
+                return True
+            nodes.extend(node.children)
+        return False
+
+    def _has_depth_limited_two_precursor_state(self, max_transforms: int) -> bool:
+        if not self.tree or not self.tree.root:
+            return False
+
+        nodes = [self.tree.root]
+        while nodes:
+            node = nodes.pop()
+            state = node.state
+            if (
+                not state.is_solved
+                and len(state.expandable_mols) == 2
                 and state.max_transforms >= max_transforms
             ):
                 return True
