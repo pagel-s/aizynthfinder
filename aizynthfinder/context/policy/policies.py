@@ -69,32 +69,15 @@ class ExpansionPolicy(ContextCollection):
         if not self.selection:
             raise PolicyException("No expansion policy selected")
 
-        cache_molecules = cache_molecules or []
         all_possible_actions = []
         all_priors = []
         for name in self.selection:
-            policy_molecules = self._applicable_molecules(name, molecules)
-            if not policy_molecules:
-                continue
             possible_actions, priors = self[name].get_actions(
-                policy_molecules,
-                self._applicable_molecules(name, cache_molecules),
+                molecules, cache_molecules
             )
             all_possible_actions.extend(possible_actions)
             all_priors.extend(priors)
         return all_possible_actions, all_priors
-
-    def _applicable_molecules(
-        self, policy_name: str, molecules: Sequence[TreeMolecule]
-    ) -> List[TreeMolecule]:
-        if policy_name != "ringbreaker" or len(self.selection or []) <= 1:
-            return list(molecules)
-        ring_molecules = []
-        for molecule in molecules:
-            molecule.sanitize(raise_exception=False)
-            if molecule.rd_mol.GetRingInfo().NumRings() > 0:
-                ring_molecules.append(molecule)
-        return ring_molecules
 
     def load(self, source: ExpansionStrategy) -> None:  # type: ignore
         """
