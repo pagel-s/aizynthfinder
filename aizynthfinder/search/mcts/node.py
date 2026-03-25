@@ -266,6 +266,7 @@ class MctsNode:
         actions, priors = self._expansion_policy(
             self.state.expandable_mols, cache_molecules
         )
+        actions, priors = self._prune_expansion_width(actions, priors)
         self._fill_children_lists(actions, priors)
 
         # Reverse the expansion if it did not produce any children
@@ -441,6 +442,26 @@ class MctsNode:
             self._children_values = list(self._children_priors)
         else:
             self._children_values = [self._algo_config["default_prior"]] * nactions
+
+    def _prune_expansion_width(
+        self, actions: List[RetroReaction], priors: List[float]
+    ) -> Tuple[List[RetroReaction], List[float]]:
+        late_expansion_cutoff_number = self._algo_config.get(
+            "late_expansion_cutoff_number", 25
+        )
+        late_expansion_start_transform = self._algo_config.get(
+            "late_expansion_start_transform", 4
+        )
+        if not late_expansion_cutoff_number:
+            return actions, priors
+        if self.state.max_transforms < late_expansion_start_transform:
+            return actions, priors
+        if len(actions) <= late_expansion_cutoff_number:
+            return actions, priors
+        return (
+            actions[:late_expansion_cutoff_number],
+            priors[:late_expansion_cutoff_number],
+        )
 
     def _filter_child_reaction(self, reaction: RetroReaction) -> bool:
         if self._regenerated_blacklisted(reaction):
