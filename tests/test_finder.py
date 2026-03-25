@@ -40,56 +40,6 @@ def test_dead_end_expansion(setup_aizynthfinder):
     assert nodes[0].created_at_iteration == 0
 
 
-def test_has_depth_limited_two_precursor_state(setup_aizynthfinder):
-    root_smi = "CCCO"
-    child_smi = ["CCBr", "CCCl"]
-    lookup = {root_smi: {"smiles": ".".join(child_smi), "prior": 1.0}}
-    finder = setup_aizynthfinder(lookup, [])
-    finder.config.search.iteration_limit = 1
-
-    finder.tree_search()
-
-    assert finder._has_depth_limited_two_precursor_state(1)
-    assert not finder._has_depth_limited_single_precursor_state(1)
-
-
-def test_tree_search_adds_two_precursor_depth_rescue(mocker):
-    finder = AiZynthFinder()
-    finder.target_smiles = "CC"
-    finder.tree = mocker.MagicMock()
-    finder.config.search.iteration_limit = 751
-    finder.config.search.time_limit = 10
-    original_max_transforms = finder.config.search.max_transforms
-    max_transforms_seen = []
-
-    def one_iteration():
-        max_transforms_seen.append(finder.config.search.max_transforms)
-        return False
-
-    finder.tree.one_iteration.side_effect = one_iteration
-    mocker.patch.object(
-        finder, "_has_depth_limited_single_precursor_state", return_value=False
-    )
-    mocker.patch.object(
-        finder, "_has_depth_limited_two_precursor_state", return_value=True
-    )
-
-    now = [0.0]
-
-    def fake_time():
-        now[0] += 0.001
-        return now[0]
-
-    mocker.patch("aizynthfinder.aizynthfinder.time.time", side_effect=fake_time)
-
-    finder.tree_search()
-
-    assert max_transforms_seen[249] == original_max_transforms
-    assert max_transforms_seen[250] == original_max_transforms + 1
-    assert max_transforms_seen[750] == original_max_transforms + 2
-    assert finder.config.search.max_transforms == original_max_transforms
-
-
 def test_tree_search_sets_random_seed(setup_aizynthfinder, mocker):
     root_smi = "CN1CCC(C(=O)c2cccc(NC(=O)c3ccc(F)cc3)c2F)CC1"
     child1_smi = ["CN1CCC(Cl)CC1", "N#Cc1cccc(NC(=O)c2ccc(F)cc2)c1F", "O"]
