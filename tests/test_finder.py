@@ -230,6 +230,32 @@ def test_two_expansions(setup_aizynthfinder):
     assert finder.search_stats["iterations"] == 1
 
 
+def test_has_depth_limited_small_frontier_state(setup_aizynthfinder):
+    root_smi = "CN1CCC(C(=O)c2cccc(NC(=O)c3ccc(F)cc3)c2F)CC1"
+    child_smi = ["N#Cc1cccc(N)c1F", "O=C(Cl)c1ccc(F)cc1"]
+    lookup = {root_smi: {"smiles": ".".join(child_smi), "prior": 1.0}}
+    finder = setup_aizynthfinder(lookup, [])
+    finder.prepare_tree()
+
+    assert finder.tree is not None
+    root = finder.tree.root
+    assert root is not None
+    root.expand()
+    child = root.promising_child()
+    assert child is not None
+    finder.config.search.max_transforms = child.state.max_transforms
+
+    finder.tree.profiling["iterations"] = 699
+    assert not finder._has_depth_limited_small_frontier_state(
+        finder.config.search.max_transforms
+    )
+
+    finder.tree.profiling["iterations"] = 700
+    assert finder._has_depth_limited_small_frontier_state(
+        finder.config.search.max_transforms
+    )
+
+
 def test_two_expansions_two_children(setup_aizynthfinder):
     """
     Test the building of this tree:
