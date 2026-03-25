@@ -157,6 +157,34 @@ class StateScorer(Scorer):
         return self._score(tree)
 
 
+class ExpandableStateScorer(StateScorer):
+    """Class for scoring unresolved frontier size more directly late in search."""
+
+    scorer_name = "expandable state score"
+
+    @staticmethod
+    def _expandable_score(expandable_count: int) -> float:
+        return float(1.0 / (1.0 + np.exp(expandable_count - 4)))
+
+    def _score_node(self, node: MctsNode) -> float:
+        in_stock_fraction = self._in_stock_scorer(node)
+        max_transform = self._transform_scorer(node)
+        expandable_score = self._expandable_score(len(node.state.expandable_mols))
+        assert isinstance(in_stock_fraction, float) and isinstance(max_transform, float)
+        return 0.85 * in_stock_fraction + 0.05 * max_transform + 0.10 * expandable_score
+
+    def _score_reaction_tree(self, tree: ReactionTree) -> float:
+        leaves = list(tree.leafs())
+        if not leaves:
+            return 1.0
+        in_stock_fraction = self._in_stock_scorer(tree)
+        max_transform = self._transform_scorer(tree)
+        expandable_count = sum(leaf not in self._config.stock for leaf in leaves)
+        expandable_score = self._expandable_score(expandable_count)
+        assert isinstance(in_stock_fraction, float) and isinstance(max_transform, float)
+        return 0.85 * in_stock_fraction + 0.05 * max_transform + 0.10 * expandable_score
+
+
 class RouteCostScorer(PriceSumScorer):
     """
     Score based on the cost of molecules and reactions.

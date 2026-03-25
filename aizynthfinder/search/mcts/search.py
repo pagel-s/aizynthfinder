@@ -24,6 +24,9 @@ _MODE2NODECLASS = {
     "multi-objective": ParetoMctsNode,
 }
 
+_LATE_STATE_SCORE_NAME = "expandable state score"
+_LATE_STATE_SCORE_START_ITERATION = 250
+
 
 class MctsSearchTree:
     """
@@ -72,6 +75,9 @@ class MctsSearchTree:
         self._logger.setLevel(logging.DEBUG)
         if self.mode == "single-objective":
             self.reward_scorer_name = config_rewards[0]
+        from aizynthfinder.context.scoring.scorers import ExpandableStateScorer
+
+        self._late_state_scorer = ExpandableStateScorer(config)
 
     @classmethod
     def from_json(cls, filename: str, config: Configuration) -> "MctsSearchTree":
@@ -110,8 +116,17 @@ class MctsSearchTree:
             current = parent
 
     def _score_node(self, node: MctsNode, scorer_name: str) -> float:
-        scorer = self.reward_scorer[scorer_name]
-        return node.cached_score(scorer_name, scorer)
+        effective_scorer_name = scorer_name
+        if (
+            scorer_name == "state score"
+            and self.profiling["iterations"] >= _LATE_STATE_SCORE_START_ITERATION
+        ):
+            effective_scorer_name = _LATE_STATE_SCORE_NAME
+        if effective_scorer_name == _LATE_STATE_SCORE_NAME:
+            scorer = self._late_state_scorer
+        else:
+            scorer = self.reward_scorer[effective_scorer_name]
+        return node.cached_score(effective_scorer_name, scorer)
 
     def _score_vector(self, node: MctsNode) -> Sequence[float]:
         return [
