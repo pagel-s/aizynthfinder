@@ -218,9 +218,9 @@ class AiZynthFinder:
                 self.expansion_policy["ringbreaker"], "cutoff_number", None
             )
         depth_rescue_activated = False
-        small_frontier_rescue_activated = False
+        single_precursor_rescue_activated = False
         ringbreaker_rescue_activated = False
-        small_frontier_rescue_recheck_interval = 50
+        single_precursor_rescue_recheck_interval = 50
 
         time0 = time.time()
         i = 1
@@ -244,12 +244,12 @@ class AiZynthFinder:
                     depth_rescue_activated = True
                 if (
                     depth_rescue_activated
-                    and not small_frontier_rescue_activated
+                    and not single_precursor_rescue_activated
                     and "first_solution_time" not in self.search_stats
                     and i >= 501
-                    and (i - 501) % small_frontier_rescue_recheck_interval == 0
-                    and self._has_depth_limited_small_frontier_state(
-                        self.config.search.max_transforms, max_expandable_mols=2
+                    and (i - 501) % single_precursor_rescue_recheck_interval == 0
+                    and self._has_depth_limited_single_precursor_state(
+                        self.config.search.max_transforms
                     )
                 ):
                     self.config.search.max_transforms = original_max_transforms + 2
@@ -263,7 +263,7 @@ class AiZynthFinder:
                             )
                         self.expansion_policy.select("ringbreaker", append=True)
                         ringbreaker_rescue_activated = True
-                    small_frontier_rescue_activated = True
+                    single_precursor_rescue_activated = True
                 if show_progress:
                     pbar.update(1)
                 self.search_stats["iterations"] += 1
@@ -286,7 +286,7 @@ class AiZynthFinder:
         finally:
             if show_progress:
                 pbar.close()
-            if depth_rescue_activated or small_frontier_rescue_activated:
+            if depth_rescue_activated or single_precursor_rescue_activated:
                 self.config.search.max_transforms = original_max_transforms
             if ringbreaker_rescue_activated:
                 if original_ringbreaker_cutoff_number is not None:
@@ -307,9 +307,7 @@ class AiZynthFinder:
         random.seed(seed)
         np.random.seed(seed)
 
-    def _has_depth_limited_small_frontier_state(
-        self, max_transforms: int, max_expandable_mols: int = 1
-    ) -> bool:
+    def _has_depth_limited_single_precursor_state(self, max_transforms: int) -> bool:
         if not self.tree or not self.tree.root:
             return False
 
@@ -319,7 +317,7 @@ class AiZynthFinder:
             state = node.state
             if (
                 not state.is_solved
-                and 0 < len(state.expandable_mols) <= max_expandable_mols
+                and len(state.expandable_mols) == 1
                 and state.max_transforms >= max_transforms
             ):
                 return True
