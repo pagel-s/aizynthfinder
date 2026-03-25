@@ -212,6 +212,11 @@ class AiZynthFinder:
         self._set_random_seed()
         original_max_transforms = self.config.search.max_transforms
         original_expansion_selection = list(self.expansion_policy.selection or [])
+        original_ringbreaker_cutoff_number = None
+        if "ringbreaker" in self.expansion_policy.items:
+            original_ringbreaker_cutoff_number = getattr(
+                self.expansion_policy["ringbreaker"], "cutoff_number", None
+            )
         depth_rescue_activated = False
         single_precursor_rescue_activated = False
         ringbreaker_rescue_activated = False
@@ -252,6 +257,10 @@ class AiZynthFinder:
                         "ringbreaker" in self.expansion_policy.items
                         and "ringbreaker" not in self.expansion_policy.selection
                     ):
+                        if original_ringbreaker_cutoff_number is not None:
+                            self.expansion_policy["ringbreaker"].cutoff_number = min(
+                                original_ringbreaker_cutoff_number, 10
+                            )
                         self.expansion_policy.select("ringbreaker", append=True)
                         ringbreaker_rescue_activated = True
                     single_precursor_rescue_activated = True
@@ -280,6 +289,10 @@ class AiZynthFinder:
             if depth_rescue_activated or single_precursor_rescue_activated:
                 self.config.search.max_transforms = original_max_transforms
             if ringbreaker_rescue_activated:
+                if original_ringbreaker_cutoff_number is not None:
+                    self.expansion_policy[
+                        "ringbreaker"
+                    ].cutoff_number = original_ringbreaker_cutoff_number
                 self.expansion_policy.select(original_expansion_selection)
 
         time_past = time.time() - time0
