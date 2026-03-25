@@ -120,6 +120,35 @@ def test_promising_child_with_filter_reject(setup_mcts_search):
     assert view["values"] == [-1000000.0, 0.5, 0.3]
 
 
+def test_generated_degeneracy_uses_cached_child_state(
+    setup_policies, generate_root, default_config
+):
+    root_smiles = "CCCO"
+    expansions = {
+        root_smiles: [
+            {"smiles": "CCBr.O", "prior": 0.7},
+            {"smiles": "CCBr.O", "prior": 0.5},
+        ]
+    }
+    default_config.search.algorithm_config["mcts_grouping"] = "full"
+    setup_policies(expansions, config=default_config)
+    root = generate_root(root_smiles, default_config)
+
+    root.expand()
+    first_child = root._select_child(0)
+
+    assert first_child is not None
+    assert root._generated_state_cache["full"][hash(first_child.state)] == [0]
+
+    second_child = root._select_child(1)
+
+    assert second_child is None
+    assert root.children_view()["values"] == [0.7, -1000000.0]
+    assert root.children_view()["actions"][0].metadata["additional_actions"] == [
+        {"policy_name": "simple_expansion"}
+    ]
+
+
 def test_select_child_prefers_best_instantiated_outcome(
     default_config, generate_root, setup_stock, monkeypatch
 ):

@@ -83,6 +83,8 @@ class MctsNode:
         self._children: List[Optional[MctsNode]] = []
         self._children_idx = {}
         self._score_cache = {}
+        self._generated_state_cache = {"full": {}, "partial": {}}
+        self._generated_state_cache_built = {"full": False, "partial": False}
 
         self.blacklist = set(mol.inchi_key for mol in state.expandable_mols)
         if parent:
@@ -425,6 +427,7 @@ class MctsNode:
                 )
                 self._children[child_idx] = new_node
                 self._children_idx[id(new_node)] = child_idx
+                self._register_generated_state(child_idx, new_node, self._degeneracy_check)
                 new_nodes.append(new_node)
         return new_nodes
 
@@ -470,6 +473,32 @@ class MctsNode:
             return True
         return False
 
+    def _generated_state_candidate_indices(self, new_state: MctsState) -> List[int]:
+        mode = self._degeneracy_check
+        cache = self._generated_state_cache[mode]
+        if not self._generated_state_cache_built[mode]:
+            cache.clear()
+            for idx, child in enumerate(self._children):
+                self._register_generated_state(idx, child, mode)
+            self._generated_state_cache_built[mode] = True
+
+        state_key = self._state_cache_key(new_state, mode)
+        candidate_indices = list(cache.get(state_key, []))
+        if not candidate_indices:
+            return []
+
+        live_indices = []
+        for idx in candidate_indices:
+            child = self._children[idx]
+            if child is not None and not child.is_terminal():
+                live_indices.append(idx)
+
+        if live_indices:
+            cache[state_key] = live_indices
+        else:
+            cache.pop(state_key, None)
+        return live_indices
+
     def _generated_degeneracy(self, new_state: MctsState, child_idx: int) -> bool:
         """
         Check if a new MCTS state is equal to another MCTS state of a children node.
@@ -492,13 +521,10 @@ class MctsNode:
         if self._degeneracy_check not in ["partial", "full"]:
             return False
         previous_action = None
-        for child, action in zip(self._children, self._children_actions):
-            if (
-                child is not None
-                and not child.is_terminal()
-                and equal_states(child.state)
-            ):
-                previous_action = action
+        for idx in self._generated_state_candidate_indices(new_state):
+            child = self._children[idx]
+            if child is not None and equal_states(child.state):
+                previous_action = self._children_actions[idx]
                 break
 
         if previous_action is None:
@@ -523,6 +549,19 @@ class MctsNode:
         if self.tree.profiling["iterations"] < tree_duplicate_pruning_start_iteration:
             return False
         return not self.tree.register_state(new_state, self._degeneracy_check)
+
+    def _register_generated_state(
+        self, child_idx: int, child: Optional["MctsNode"], mode: str
+    ) -> None:
+        if mode not in ["partial", "full"] or child is None or child.is_terminal():
+            return
+        state_key = self._state_cache_key(child.state, mode)
+        self._generated_state_cache[mode].setdefault(state_key, []).append(child_idx)
+
+    def _state_cache_key(self, state: MctsState, mode: str) -> int:
+        if mode == "partial":
+            return state.expandables_hash
+        return hash(state)
 
     def _instantiate_child(self, child_idx: int) -> List["MctsNode"]:
         """
