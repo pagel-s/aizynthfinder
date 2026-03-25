@@ -211,7 +211,16 @@ class AiZynthFinder:
         self.search_stats = {"returned_first": False, "iterations": 0}
         self._set_random_seed()
         original_max_transforms = self.config.search.max_transforms
+        original_expansion_selection = list(self.expansion_policy.selection or [])
+        original_ringbreaker_cutoff_number = None
+        if "ringbreaker" in self.expansion_policy.items:
+            original_ringbreaker_cutoff_number = getattr(
+                self.expansion_policy["ringbreaker"], "cutoff_number", None
+            )
         depth_rescue_activated = False
+        single_precursor_rescue_activated = False
+        ringbreaker_rescue_activated = False
+        single_precursor_rescue_recheck_interval = 50
 
         time0 = time.time()
         i = 1
@@ -231,8 +240,30 @@ class AiZynthFinder:
                     and "first_solution_time" not in self.search_stats
                     and i == 251
                 ):
-                    self.config.search.max_transforms = original_max_transforms + 2
+                    self.config.search.max_transforms = original_max_transforms + 1
                     depth_rescue_activated = True
+                if (
+                    depth_rescue_activated
+                    and not single_precursor_rescue_activated
+                    and "first_solution_time" not in self.search_stats
+                    and i >= 501
+                    and (i - 501) % single_precursor_rescue_recheck_interval == 0
+                    and self._has_depth_limited_single_precursor_state(
+                        self.config.search.max_transforms
+                    )
+                ):
+                    self.config.search.max_transforms = original_max_transforms + 2
+                    if (
+                        "ringbreaker" in self.expansion_policy.items
+                        and "ringbreaker" not in self.expansion_policy.selection
+                    ):
+                        if original_ringbreaker_cutoff_number is not None:
+                            self.expansion_policy["ringbreaker"].cutoff_number = min(
+                                original_ringbreaker_cutoff_number, 10
+                            )
+                        self.expansion_policy.select("ringbreaker", append=True)
+                        ringbreaker_rescue_activated = True
+                    single_precursor_rescue_activated = True
                 if show_progress:
                     pbar.update(1)
                 self.search_stats["iterations"] += 1
@@ -255,8 +286,14 @@ class AiZynthFinder:
         finally:
             if show_progress:
                 pbar.close()
-            if depth_rescue_activated:
+            if depth_rescue_activated or single_precursor_rescue_activated:
                 self.config.search.max_transforms = original_max_transforms
+            if ringbreaker_rescue_activated:
+                if original_ringbreaker_cutoff_number is not None:
+                    self.expansion_policy[
+                        "ringbreaker"
+                    ].cutoff_number = original_ringbreaker_cutoff_number
+                self.expansion_policy.select(original_expansion_selection)
 
         time_past = time.time() - time0
         self._logger.debug("Search completed")
@@ -269,6 +306,23 @@ class AiZynthFinder:
             return
         random.seed(seed)
         np.random.seed(seed)
+
+    def _has_depth_limited_single_precursor_state(self, max_transforms: int) -> bool:
+        if not self.tree or not self.tree.root:
+            return False
+
+        nodes = [self.tree.root]
+        while nodes:
+            node = nodes.pop()
+            state = node.state
+            if (
+                not state.is_solved
+                and len(state.expandable_mols) == 1
+                and state.max_transforms >= max_transforms
+            ):
+                return True
+            nodes.extend(node.children)
+        return False
 
     def _setup_focussed_bonds(self, target_mol: Molecule) -> None:
         """
