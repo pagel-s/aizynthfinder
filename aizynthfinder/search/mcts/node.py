@@ -511,12 +511,24 @@ class MctsNode:
     def _generated_tree_degeneracy(self, new_state: MctsState) -> bool:
         if self._degeneracy_check not in ["partial", "full"] or not self.tree:
             return False
+        duplicate_pruning_mode = self._degeneracy_check
         tree_duplicate_pruning_start_iteration = self._algo_config.get(
             "tree_duplicate_pruning_start_iteration", 250
         )
-        if self.tree.profiling["iterations"] < tree_duplicate_pruning_start_iteration:
+        current_iteration = self.tree.profiling["iterations"]
+        if current_iteration < tree_duplicate_pruning_start_iteration:
             return False
-        return not self.tree.register_state(new_state, self._degeneracy_check)
+
+        tree_duplicate_pruning_partial_start_iteration = self._algo_config.get(
+            "tree_duplicate_pruning_partial_start_iteration", 750
+        )
+        if (
+            duplicate_pruning_mode == "full"
+            and current_iteration >= tree_duplicate_pruning_partial_start_iteration
+        ):
+            duplicate_pruning_mode = "partial"
+
+        return not self.tree.register_state(new_state, duplicate_pruning_mode)
 
     def _instantiate_child(self, child_idx: int) -> List["MctsNode"]:
         """
