@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from aizynthfinder.chem import SmilesBasedRetroReaction, TemplatedRetroReaction
 from aizynthfinder.context.collection import ContextCollection
 from aizynthfinder.context.policy.expansion_strategies import (
     ExpansionStrategy,
@@ -78,66 +77,7 @@ class ExpansionPolicy(ContextCollection):
             )
             all_possible_actions.extend(possible_actions)
             all_priors.extend(priors)
-        return self._deduplicate_actions(all_possible_actions, all_priors)
-
-    @staticmethod
-    def _action_key(action: RetroReaction) -> tuple:
-        if isinstance(action, TemplatedRetroReaction):
-            return ("templated", id(action.mol), action.smarts)
-        if isinstance(action, SmilesBasedRetroReaction):
-            return ("smiles", id(action.mol), action.reactants_str)
-        return ("other", id(action))
-
-    @staticmethod
-    def _primary_action_metadata(action: RetroReaction) -> Dict:
-        metadata = dict(action.metadata)
-        metadata.pop("additional_actions", None)
-        return metadata
-
-    @classmethod
-    def _action_metadata_variants(cls, action: RetroReaction) -> List[Dict]:
-        variants = [cls._primary_action_metadata(action)]
-        variants.extend(dict(item) for item in action.metadata.get("additional_actions", []))
-        return variants
-
-    @classmethod
-    def _merge_action_metadata(
-        cls, target_action: RetroReaction, source_action: RetroReaction
-    ) -> None:
-        target_primary = cls._primary_action_metadata(target_action)
-        additional_actions = target_action.metadata.setdefault("additional_actions", [])
-        for metadata in cls._action_metadata_variants(source_action):
-            if metadata == target_primary or metadata in additional_actions:
-                continue
-            additional_actions.append(metadata)
-
-    @classmethod
-    def _deduplicate_actions(
-        cls, actions: List[RetroReaction], priors: List[float]
-    ) -> Tuple[List[RetroReaction], List[float]]:
-        deduplicated_actions: List[RetroReaction] = []
-        deduplicated_priors: List[float] = []
-        action_indices: Dict[tuple, int] = {}
-
-        for action, prior in zip(actions, priors):
-            action_key = cls._action_key(action)
-            action_idx = action_indices.get(action_key)
-            if action_idx is None:
-                action_indices[action_key] = len(deduplicated_actions)
-                deduplicated_actions.append(action)
-                deduplicated_priors.append(prior)
-                continue
-
-            kept_action = deduplicated_actions[action_idx]
-            kept_prior = deduplicated_priors[action_idx]
-            if prior > kept_prior:
-                cls._merge_action_metadata(action, kept_action)
-                deduplicated_actions[action_idx] = action
-                deduplicated_priors[action_idx] = prior
-            else:
-                cls._merge_action_metadata(kept_action, action)
-
-        return deduplicated_actions, deduplicated_priors
+        return all_possible_actions, all_priors
 
     def load(self, source: ExpansionStrategy) -> None:  # type: ignore
         """
