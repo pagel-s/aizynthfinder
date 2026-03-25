@@ -22,6 +22,7 @@ from aizynthfinder.context.scoring import BrokenBondsScorer, CombinedScorer
 from aizynthfinder.reactiontree import ReactionTreeFromExpansion
 from aizynthfinder.search.andor_trees import AndOrSearchTreeBase
 from aizynthfinder.search.mcts import MctsSearchTree
+from aizynthfinder.search.retrostar.search_tree import SearchTree as RetroStarSearchTree
 from aizynthfinder.utils.exceptions import MoleculeException
 from aizynthfinder.utils.loading import load_dynamic_class
 
@@ -221,6 +222,7 @@ class AiZynthFinder:
         single_precursor_rescue_activated = False
         ringbreaker_rescue_activated = False
         single_precursor_rescue_recheck_interval = 50
+        retrostar_fallback_start_iteration = 750
 
         time0 = time.time()
         i = 1
@@ -283,6 +285,41 @@ class AiZynthFinder:
                     break
                 i = i + 1
                 time_past = time.time() - time0
+
+            if (
+                self.config.search.algorithm.lower() == "mcts"
+                and "first_solution_time" not in self.search_stats
+                and self.search_stats["iterations"] >= retrostar_fallback_start_iteration
+                and time_past < self.config.search.time_limit
+                and i <= self.config.search.iteration_limit
+            ):
+                self.tree = RetroStarSearchTree(
+                    root_smiles=self.target_smiles, config=self.config
+                )
+                while (
+                    time_past < self.config.search.time_limit
+                    and i <= self.config.search.iteration_limit
+                ):
+                    if show_progress:
+                        pbar.update(1)
+                    self.search_stats["iterations"] += 1
+
+                    try:
+                        is_solved = self.tree.one_iteration()
+                    except StopIteration:
+                        break
+
+                    if is_solved and "first_solution_time" not in self.search_stats:
+                        self.search_stats["first_solution_time"] = time.time() - time0
+                        self.search_stats["first_solution_iteration"] = i
+
+                    if self.config.search.return_first and is_solved:
+                        self._logger.debug("Found first solved route in Retro* fallback")
+                        self.search_stats["returned_first"] = True
+                        break
+
+                    i = i + 1
+                    time_past = time.time() - time0
         finally:
             if show_progress:
                 pbar.close()
