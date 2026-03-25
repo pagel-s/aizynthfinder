@@ -552,17 +552,8 @@ class MctsNode:
                 return []
 
             keep_mols = [mol for mol in self.state.mols if mol is not reaction.mol]
-            keep_in_stock = [
-                in_stock
-                for mol, in_stock in zip(self.state.mols, self.state.in_stock_list)
-                if mol is not reaction.mol
-            ]
             new_states = [
-                MctsState(
-                    keep_mols + list(reactants),
-                    self._config,
-                    keep_in_stock + [None] * len(reactants),
-                )
+                MctsState(keep_mols + list(reactants), self._config)
                 for reactants in reaction.reactants
             ]
         except Exception as err:  # pragma: no cover - defensive benchmark hardening
