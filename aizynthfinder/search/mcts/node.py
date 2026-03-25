@@ -581,6 +581,14 @@ class MctsNode:
             raise ValueError("Has no selectable children")
         scores = self._children_q() + self._children_u()
         indices = np.where(scores == scores.max())[0]
+        if len(indices) > 1:
+            instantiated = np.asarray(
+                [idx for idx in indices if self._children[idx] is not None], dtype=int
+            )
+            if len(instantiated) > 0:
+                indices = instantiated
+            child_priors = np.asarray(self._children_priors, dtype=float)[indices]
+            indices = indices[child_priors == child_priors.max()]
         index = np.random.choice(indices)
         return self._select_child(index)
 
