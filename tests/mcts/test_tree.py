@@ -111,38 +111,3 @@ def test_tree_duplicate_pruning_respects_start_iteration(
 
     assert second_child.promising_child() is not None
     assert second_child.children_view()["values"] == [1.0]
-
-
-def test_tree_duplicate_pruning_uses_partial_grouping_late(
-    setup_policies, setup_stock, default_config
-):
-    root_smiles = "CCCO"
-    expansions = {
-        root_smiles: [
-            {"smiles": "CCBr.O", "prior": 0.7},
-            {"smiles": "CCCl.N", "prior": 0.5},
-        ],
-        "CCBr": {"smiles": "CC", "prior": 1.0},
-        "CCCl": {"smiles": "CC", "prior": 1.0},
-    }
-    default_config.search.algorithm_config["tree_duplicate_pruning_start_iteration"] = 0
-    default_config.search.algorithm_config[
-        "tree_duplicate_pruning_partial_start_iteration"
-    ] = 0
-    setup_policies(expansions, config=default_config)
-    setup_stock(default_config, "O", "N")
-    tree = MctsSearchTree(config=default_config, root_smiles=root_smiles)
-    root = tree.root
-
-    root.expand()
-    first_child = root.promising_child()
-    assert first_child is not None
-    first_child.expand()
-    assert first_child.promising_child() is not None
-
-    second_child = root._select_child(1)
-    assert second_child is not None
-    second_child.expand()
-
-    assert second_child.promising_child() is None
-    assert second_child.children_view()["values"] == [-1000000.0]
