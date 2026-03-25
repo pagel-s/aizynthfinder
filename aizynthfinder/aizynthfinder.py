@@ -240,7 +240,7 @@ class AiZynthFinder:
                     and "first_solution_time" not in self.search_stats
                     and i == 251
                 ):
-                    self.config.search.max_transforms = original_max_transforms + 1
+                    self.config.search.max_transforms = original_max_transforms + 2
                     depth_rescue_activated = True
                 if (
                     depth_rescue_activated
