@@ -45,6 +45,29 @@ def test_compute_reward_caches_single_objective_scores(default_config, mocker):
     mocked_score.assert_called_once_with(tree.root)
 
 
+def test_compute_reward_uses_late_score_only_for_depth_limited_nodes(
+    setup_complete_mcts_tree, mocker
+):
+    tree, nodes = setup_complete_mcts_tree
+    base_scorer = tree.reward_scorer[tree.reward_scorer_name]
+    mocked_base = mocker.patch.object(base_scorer, "_score_node", return_value=0.123)
+    mocked_late = mocker.patch.object(
+        tree._late_state_scorer, "_score_node", return_value=0.456
+    )
+    tree.profiling["iterations"] = 250
+    tree.config.search.max_transforms = nodes[2].state.max_transforms
+
+    shallow_score = tree.compute_reward(nodes[1])
+    depth_limited_score = tree.compute_reward(nodes[2])
+    repeated_depth_limited_score = tree.compute_reward(nodes[2])
+
+    assert shallow_score == 0.123
+    assert depth_limited_score == 0.456
+    assert repeated_depth_limited_score == 0.456
+    mocked_base.assert_called_once_with(nodes[1])
+    mocked_late.assert_called_once_with(nodes[2])
+
+
 def test_route_to_node(setup_complete_mcts_tree):
     tree, nodes = setup_complete_mcts_tree
 

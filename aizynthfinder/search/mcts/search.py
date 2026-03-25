@@ -25,6 +25,7 @@ _MODE2NODECLASS = {
 }
 
 _LATE_STATE_SCORE_NAME = "expandable state score"
+_DEPTH_LIMITED_LATE_STATE_SCORE_NAME = "expandable state score at depth limit"
 _LATE_STATE_SCORE_START_ITERATION = 250
 
 
@@ -120,9 +121,10 @@ class MctsSearchTree:
         if (
             scorer_name == "state score"
             and self.profiling["iterations"] >= _LATE_STATE_SCORE_START_ITERATION
+            and node.state.max_transforms >= self.config.search.max_transforms
         ):
-            effective_scorer_name = _LATE_STATE_SCORE_NAME
-        if effective_scorer_name == _LATE_STATE_SCORE_NAME:
+            effective_scorer_name = _DEPTH_LIMITED_LATE_STATE_SCORE_NAME
+        if effective_scorer_name == _DEPTH_LIMITED_LATE_STATE_SCORE_NAME:
             scorer = self._late_state_scorer
         else:
             scorer = self.reward_scorer[effective_scorer_name]
