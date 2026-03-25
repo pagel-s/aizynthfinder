@@ -104,3 +104,51 @@ def test_driver_logs_hard_then_main_on_hard_improvement(
     assert rows[-1]["benchmark"] == "main15"
     assert rows[-1]["status"] == "keep"
     assert rows[-1]["description"] == "paired_run"
+
+
+def test_driver_keeps_when_main_gate_matches_with_tsv_rounding(
+    add_cli_arguments, mocker, tmpdir
+):
+    results_file = tmpdir / "results.tsv"
+    results_file.write(
+        "\n".join(
+            [
+                "commit\tbenchmark\tsolved_fraction\tn_solved\tmedian_first_solution_s\tmedian_first_solution_iter\tmean_search_s\tbenchmark_wall_s\tstatus\tdescription",
+                "basehard\thard10\t0.600000\t6\t10.924031\t293.500000\t19.895422\t199.916548\tkeep\thard baseline",
+                "basemain\tmain15\t0.866667\t13\t1.805017\t53.000000\t9.635446\t145.244698\tkeep\tmain baseline",
+            ]
+        )
+        + "\n"
+    )
+    run_patch = mocker.patch(
+        "aizynthfinder.tools.autoresearch_driver.run_benchmark_from_spec",
+        side_effect=[
+            _payload(0.6, 6, 6.96048104763031, 293.0, 17.13386778831482, 172.331421),
+            _payload(
+                13 / 15,
+                13,
+                0.7675271034240723,
+                53.0,
+                8.096232398351033,
+                123.272949,
+            ),
+        ],
+    )
+    mocker.patch(
+        "aizynthfinder.tools.autoresearch_driver._resolve_commit",
+        return_value="ghi9012",
+    )
+    add_cli_arguments(
+        f"--description rounded_main_gate --results-tsv {results_file}"
+    )
+
+    driver_main()
+
+    assert run_patch.call_count == 2
+    rows = _read_rows(results_file)
+    assert rows[-2]["commit"] == "ghi9012"
+    assert rows[-2]["benchmark"] == "hard10"
+    assert rows[-2]["status"] == "keep"
+    assert rows[-1]["commit"] == "ghi9012"
+    assert rows[-1]["benchmark"] == "main15"
+    assert rows[-1]["status"] == "keep"

@@ -21,6 +21,7 @@ RESULTS_COLUMNS = [
     "status",
     "description",
 ]
+RESULTS_TSV_TOLERANCE = 1e-6
 
 
 def _get_arguments() -> argparse.Namespace:
@@ -162,17 +163,17 @@ def _compare_optional_lower(
         return -1
     if reference is None:
         return 1
-    if candidate < reference:
+    if candidate < reference - RESULTS_TSV_TOLERANCE:
         return 1
-    if candidate > reference:
+    if candidate > reference + RESULTS_TSV_TOLERANCE:
         return -1
     return 0
 
 
 def _compare_higher(candidate: float, reference: float) -> int:
-    if candidate > reference:
+    if candidate > reference + RESULTS_TSV_TOLERANCE:
         return 1
-    if candidate < reference:
+    if candidate < reference - RESULTS_TSV_TOLERANCE:
         return -1
     return 0
 
@@ -204,7 +205,10 @@ def _passes_main_gate(
 ) -> bool:
     if reference is None:
         return True
-    return float(candidate["solved_fraction"]) >= float(reference["solved_fraction"])
+    return (
+        float(candidate["solved_fraction"]) + RESULTS_TSV_TOLERANCE
+        >= float(reference["solved_fraction"])
+    )
 
 
 def _format_metric(value: Any) -> str:
